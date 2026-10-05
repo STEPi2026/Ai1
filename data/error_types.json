@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "curriculum": "공통수학1",
+    "version": "1.0.0",
+    "description": "오류 형태(error_type) taxonomy. error_type은 학생 풀이에서 관찰되는 오류의 '형태'이며 개념적 원인은 misconceptions.json이 담당한다.",
+    "note": "error_type_id 값은 기존 API 응답의 error_type 필드 값과 동일 문자열을 사용한다(하위호환). error_subtype은 additive 확장 필드."
+  },
+  "error_types": [
+    {
+      "error_type_id": "calculation",
+      "name": "계산 오류",
+      "description": "풀이 방법은 옳으나 단순 계산 과정에서 실수한 형태.",
+      "subtypes": [
+        {
+          "error_subtype_id": "arithmetic_slip",
+          "name": "사칙연산 실수",
+          "description": "덧셈·뺄셈·곱셈·나눗셈 과정의 단순 실수.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "sign_slip",
+          "name": "부호 실수",
+          "description": "음수의 부호 처리 과정에서 발생한 실수.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "fraction_slip",
+          "name": "분수·소수 계산 실수",
+          "description": "통분·약분, 분수와 소수의 연산 과정에서 발생한 실수.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "exponent_slip",
+          "name": "거듭제곱 계산 실수",
+          "description": "거듭제곱·지수법칙 관련 계산 실수. 지수법칙은 공통수학1 범위 밖(수학Ⅰ 확장 영역)이므로 future로 표시.",
+          "status": "future"
+        }
+      ]
+    },
+    {
+      "error_type_id": "concept_error",
+      "name": "개념 오류",
+      "description": "수학적 개념을 잘못 이해하여 발생한 형태의 오류. 개념적 원인은 misconception으로 분리 관리한다.",
+      "subtypes": [
+        {
+          "error_subtype_id": "distribution_omit",
+          "name": "분배법칙 누락",
+          "description": "괄호 안의 모든 항에 계수를 곱하지 않고 일부만 곱하는 전개 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "sign_not_flipped",
+          "name": "이항 시 부호 미변경",
+          "description": "항을 등식의 다른 변으로 옮길 때 부호를 바꾸지 않거나, 한쪽에서 뺀 항을 반대쪽에 반영하지 않는 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "unlike_terms",
+          "name": "동류항 처리 오류",
+          "description": "동류항이 아닌 항을 계산하거나 동류항을 잘못 결합하는 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "factoring_confusion",
+          "name": "인수분해·전개 혼동",
+          "description": "인수분해와 전개를 혼동하거나 인수분해 공식을 잘못 적용하는 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "formula_misuse",
+          "name": "공식 오용",
+          "description": "근의 공식, 판별식, 함수의 성질 등 공식을 잘못 적용하는 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "inequality_sign",
+          "name": "부등호 방향 오류",
+          "description": "부등호의 방향을 잘못 설정하거나 해의 구간을 반대로 판단하는 오류.",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "error_type_id": "procedure",
+      "name": "절차 오류",
+      "description": "풀이 절차나 단계 수행의 결함에서 발생한 형태의 오류.",
+      "subtypes": [
+        {
+          "error_subtype_id": "step_skipped",
+          "name": "단계 생략",
+          "description": "필요한 단계를 생략하거나 경우를 나누는 절차를 누락한 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "incomplete_solution",
+          "name": "해의 일부 누락",
+          "description": "여러 해 중 일부만 제시한 오류. 예: x²=16 → x=4 만 제시.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "method_mismatch",
+          "name": "방법 불일치",
+          "description": "상황에 맞지 않는 풀이 방법을 선택한 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "domain_violation",
+          "name": "정의역·조건 위반",
+          "description": "정의역, 분모 0, 제곱근 안의 조건 등을 고려하지 않은 오류.",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "error_type_id": "comprehension",
+      "name": "문제 이해 오류",
+      "description": "문제를 잘못 읽거나 요구사항을 오해하여 발생한 형태의 오류.",
+      "subtypes": [
+        {
+          "error_subtype_id": "misread_problem",
+          "name": "문제 오독",
+          "description": "문제식이나 조건을 잘못 옮겨 적은 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "condition_missed",
+          "name": "조건 누락",
+          "description": "주어진 조건 일부를 놓친 오류.",
+          "status": "active"
+        },
+        {
+          "error_subtype_id": "goal_misunderstood",
+          "name": "요구사항 오해",
+          "description": "무엇을 구해야 하는지 잘못 이해한 오류.",
+          "status": "active"
+        }
+      ]
+    }
+  ]
+}

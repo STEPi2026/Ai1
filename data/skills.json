@@ -1,0 +1,296 @@
+{
+  "meta": {
+    "curriculum": "공통수학1",
+    "version": "1.0.0",
+    "description": "AI① Knowledge State(BKT) 추적 단위인 Skill taxonomy. skill_id는 BKT key이므로 확정 후 변경 금지.",
+    "note": "지수·로그·삼각함수·수열은 공통수학1 범위 밖 → expansion_skills로 분리(status=future)"
+  },
+  "skills": [
+    {
+      "skill_id": "arithmetic",
+      "name": "사칙연산과 부호 처리",
+      "description": "음수를 포함한 사칙연산과 부호 처리 능력. 기존 코드에서 사용 중인 skill_id 유지.",
+      "unit": "기초 (선행 복습)",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": [],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "distribution",
+      "name": "분배법칙과 괄호 전개",
+      "description": "괄호 앞의 계수를 괄호 안의 모든 항에 곱하여 전개하는 능력. 기존 코드에서 사용 중인 skill_id 유지.",
+      "unit": "기초 (선행 복습)",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["arithmetic"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "transposition",
+      "name": "이항과 등식의 성질",
+      "description": "등식 양변에 같은 연산을 적용하여 항을 이동하는 능력. 기존 코드에서 사용 중인 skill_id 유지.",
+      "unit": "기초 (선행 복습)",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["arithmetic"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "linear_equation",
+      "name": "일차방정식의 풀이",
+      "description": "일차방정식을 변형하여 해를 구하는 능력. 기존 코드에서 사용 중인 skill_id 유지.",
+      "unit": "기초 (선행 복습)",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["arithmetic", "transposition", "distribution"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "polynomial_arithmetic",
+      "name": "다항식의 연산",
+      "description": "다항식의 덧셈·뺄셈·곱셈·나눗셈을 포괄하는 상위 개념 노드.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["distribution"],
+      "bkt_eligible": false
+    },
+    {
+      "skill_id": "polynomial_addition",
+      "name": "다항식의 덧셈과 뺄셈",
+      "description": "동류항을 찾아 계수를 더하거나 빼는 능력.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": "polynomial_arithmetic",
+      "prerequisite_skill_ids": ["arithmetic"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "polynomial_multiplication",
+      "name": "다항식의 곱셈",
+      "description": "다항식을 곱하여 전개하는 능력.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": "polynomial_arithmetic",
+      "prerequisite_skill_ids": ["distribution"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "polynomial_division",
+      "name": "다항식의 나눗셈",
+      "description": "조립제법을 포함한 다항식의 나눗셈 능력.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": "polynomial_arithmetic",
+      "prerequisite_skill_ids": ["polynomial_multiplication"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "factoring",
+      "name": "인수분해",
+      "description": "다항식을 인수의 곱으로 나타내는 상위 개념 노드.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["polynomial_multiplication"],
+      "bkt_eligible": false
+    },
+    {
+      "skill_id": "factoring_common",
+      "name": "공통인수 인수분해",
+      "description": "공통인수를 찾아 괄호로 묶는 인수분해 능력.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": "factoring",
+      "prerequisite_skill_ids": ["distribution"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "factoring_formula",
+      "name": "인수분해 공식",
+      "description": "제곱의 차, 완전제곱 등 인수분해 공식을 적용하는 능력.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": "factoring",
+      "prerequisite_skill_ids": ["distribution"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "factoring_application",
+      "name": "인수분해의 활용",
+      "description": "인수분해를 활용하여 식을 변형하거나 방정식을 푸는 능력.",
+      "unit": "다항식의 연산과 인수분해",
+      "parent_skill_id": "factoring",
+      "prerequisite_skill_ids": ["factoring_common", "factoring_formula"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "complex_number",
+      "name": "복소수와 허수 단위",
+      "description": "허수 단위 i와 복소수의 개념을 이해하고 연산하는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["arithmetic"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "quadratic_equation",
+      "name": "이차방정식의 근",
+      "description": "근의 공식을 포함하여 이차방정식의 근을 구하는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["linear_equation", "distribution"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "quadratic_discriminant",
+      "name": "판별식과 근의 개수",
+      "description": "판별식으로 근의 개수와 성질을 판단하는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": "quadratic_equation",
+      "prerequisite_skill_ids": ["quadratic_equation"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "root_coefficient_relation",
+      "name": "계수와 근의 관계",
+      "description": "근의 합과 근의 곱을 계수와 연결하는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": "quadratic_equation",
+      "prerequisite_skill_ids": ["quadratic_equation"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "quadratic_function",
+      "name": "이차함수와 실근",
+      "description": "이차함수의 그래프와 이차방정식의 실근을 연결하는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["quadratic_equation"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "higher_equation",
+      "name": "고차방정식과 연립이차방정식",
+      "description": "인수분해와 근의 공식을 활용하여 고차·연립 방정식을 푸는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["factoring_application", "quadratic_equation"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "quadratic_inequality",
+      "name": "이차부등식",
+      "description": "이차함수의 부호 변화를 이용하여 이차부등식의 해를 구하는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["quadratic_discriminant"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "absolute_inequality",
+      "name": "절댓값 부등식",
+      "description": "경우를 나누어 절댓값 부등식을 푸는 능력.",
+      "unit": "방정식과 부등식",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["linear_equation"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "set_operation",
+      "name": "집합과 집합의 연산",
+      "description": "집합을 표기하고 합집합·교집합·차집합을 구하는 능력.",
+      "unit": "집합과 명제",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": [],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "proposition",
+      "name": "명제와 조건",
+      "description": "명제의 참·거짓을 판단하고 조건의 관계를 이해하는 능력.",
+      "unit": "집합과 명제",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["set_operation"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "proof_method",
+      "name": "증명의 방법",
+      "description": "귀류법 등 대표적인 증명 방법을 이해하고 활용하는 능력.",
+      "unit": "집합과 명제",
+      "parent_skill_id": "proposition",
+      "prerequisite_skill_ids": ["proposition"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "function_concept",
+      "name": "함수와 그 그래프",
+      "description": "함수의 정의역·치역·대응 관계와 그래프를 이해하는 능력.",
+      "unit": "함수",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["set_operation"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "rational_function",
+      "name": "유리함수",
+      "description": "유리함수의 그래프와 점근선을 해석하는 능력.",
+      "unit": "함수",
+      "parent_skill_id": "function_concept",
+      "prerequisite_skill_ids": ["function_concept"],
+      "bkt_eligible": true
+    },
+    {
+      "skill_id": "irrational_function",
+      "name": "무리함수",
+      "description": "무리함수의 정의역과 그래프를 다루는 능력.",
+      "unit": "함수",
+      "parent_skill_id": "function_concept",
+      "prerequisite_skill_ids": ["function_concept"],
+      "bkt_eligible": true
+    }
+  ],
+  "expansion_skills": [
+    {
+      "skill_id": "exponent_law",
+      "name": "지수법칙",
+      "description": "지수법칙을 이해하고 적용하는 능력. 공통수학1 범위 밖 — 수학Ⅰ 확장 영역.",
+      "unit": "지수함수와 로그함수",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["arithmetic"],
+      "bkt_eligible": true,
+      "status": "future"
+    },
+    {
+      "skill_id": "logarithm_function",
+      "name": "로그함수",
+      "description": "로그의 의미와 로그함수의 성질을 다루는 능력. 공통수학1 범위 밖 — 수학Ⅰ 확장 영역.",
+      "unit": "지수함수와 로그함수",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["exponent_law", "function_concept"],
+      "bkt_eligible": true,
+      "status": "future"
+    },
+    {
+      "skill_id": "trig_function",
+      "name": "삼각함수",
+      "description": "삼각함수의 의미와 그래프를 다루는 능력. 공통수학1 범위 밖 — 수학Ⅰ 확장 영역.",
+      "unit": "삼각함수",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["function_concept"],
+      "bkt_eligible": true,
+      "status": "future"
+    },
+    {
+      "skill_id": "arithmetic_sequence",
+      "name": "등차수열",
+      "description": "등차수열의 일반항과 합을 다루는 능력. 공통수학1 범위 밖 — 수학Ⅰ 확장 영역.",
+      "unit": "수열",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["linear_equation"],
+      "bkt_eligible": true,
+      "status": "future"
+    },
+    {
+      "skill_id": "geometric_sequence",
+      "name": "등비수열",
+      "description": "등비수열의 일반항과 합을 다루는 능력. 공통수학1 범위 밖 — 수학Ⅰ 확장 영역.",
+      "unit": "수열",
+      "parent_skill_id": null,
+      "prerequisite_skill_ids": ["arithmetic_sequence"],
+      "bkt_eligible": true,
+      "status": "future"
+    }
+  ]
+}

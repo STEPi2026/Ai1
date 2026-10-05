@@ -1,0 +1,1319 @@
+{
+  "meta": {
+    "name": "golden_100",
+    "unit": "일차방정식 (초기 단원)",
+    "skills": [
+      "linear_equation",
+      "transposition",
+      "distribution",
+      "arithmetic"
+    ],
+    "base": "golden_20 + 80 확장 (패턴 체계화 — 실사용 필기 데이터 아님)",
+    "gate": {
+      "step_accuracy": 0.85,
+      "error_type_accuracy": 0.85
+    }
+  },
+  "cases": [
+    {
+      "id": "G01",
+      "category": "correct",
+      "problem_latex": "2(x-3)=6",
+      "solution_text": "2(x-3)=6\n2x-6=6\n2x=12\nx=6",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G02",
+      "category": "correct",
+      "problem_latex": "3x+5=20",
+      "solution_text": "3x+5=20\n3x=15\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G03",
+      "category": "correct",
+      "problem_latex": "x-4=7",
+      "solution_text": "x-4=7\nx=11",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G04",
+      "category": "correct",
+      "problem_latex": "5x=35",
+      "solution_text": "5x=35\nx=7",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G05",
+      "category": "correct",
+      "problem_latex": "4(x+2)=24",
+      "solution_text": "4(x+2)=24\n4x+8=24\n4x=16\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G06",
+      "category": "correct",
+      "problem_latex": "2x+7=3x-5",
+      "solution_text": "2x+7=3x-5\n2x-3x=-5-7\n-x=-12\nx=12",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G07",
+      "category": "correct",
+      "problem_latex": "x/2+3=8",
+      "solution_text": "x/2+3=8\nx/2=5\nx=10",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G08",
+      "category": "correct",
+      "problem_latex": "6x-9=3",
+      "solution_text": "6x-9=3\n6x=12\nx=2",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G09",
+      "category": "calculation",
+      "problem_latex": "5x=15",
+      "solution_text": "5x=15\nx=4",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G10",
+      "category": "calculation",
+      "problem_latex": "4(x+2)=24",
+      "solution_text": "4(x+2)=24\n4x+8=24\n4x=16\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 4,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G11",
+      "category": "calculation",
+      "problem_latex": "2x-6=6",
+      "solution_text": "2x-6=6\n2x=12\nx=7",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G12",
+      "category": "calculation",
+      "problem_latex": "x-4=7",
+      "solution_text": "x-4=7\nx=12",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G13",
+      "category": "calculation",
+      "problem_latex": "3x+2x-5=10",
+      "solution_text": "3x+2x-5=10\n4x-5=10",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G14",
+      "category": "calculation",
+      "problem_latex": "x/2+3=8",
+      "solution_text": "x/2+3=8\nx/2=4",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G15",
+      "category": "distribution",
+      "problem_latex": "2(x-3)=6",
+      "solution_text": "2(x-3)=6\n2x-3=6",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G16",
+      "category": "distribution",
+      "problem_latex": "4(x+2)=24",
+      "solution_text": "4(x+2)=24\n4x+2=24",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G17",
+      "category": "distribution",
+      "problem_latex": "3(2x+1)=12",
+      "solution_text": "3(2x+1)=12\n6x+1=12",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G18",
+      "category": "transposition",
+      "problem_latex": "3x+5=20",
+      "solution_text": "3x+5=20\n3x=25",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G19",
+      "category": "transposition",
+      "problem_latex": "2x-6=6",
+      "solution_text": "2x-6=6\n2x=0",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G20",
+      "category": "comprehension",
+      "problem_latex": "2x+5=13",
+      "solution_text": "2x+5=15\n2x=10\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 1,
+        "error_type": "comprehension",
+        "skill": "linear_equation",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G21",
+      "category": "correct",
+      "problem_latex": "2x+3=11",
+      "solution_text": "2x+3=11\n2x=8\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G22",
+      "category": "correct",
+      "problem_latex": "5x-4=26",
+      "solution_text": "5x-4=26\n5x=30\nx=6",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G23",
+      "category": "correct",
+      "problem_latex": "7x+2=30",
+      "solution_text": "7x+2=30\n7x=28\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G24",
+      "category": "calculation",
+      "problem_latex": "2x+3=11",
+      "solution_text": "2x+3=11\n2x=8\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G25",
+      "category": "calculation",
+      "problem_latex": "5x-4=26",
+      "solution_text": "5x-4=26\n5x=30\nx=7",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G26",
+      "category": "calculation",
+      "problem_latex": "7x+2=30",
+      "solution_text": "7x+2=30\n7x=28\nx=3",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G27",
+      "category": "calculation",
+      "problem_latex": "4x+1=21",
+      "solution_text": "4x+1=21\n4x=20\nx=6",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G28",
+      "category": "calculation",
+      "problem_latex": "3x=18",
+      "solution_text": "3x=18\nx=7",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G29",
+      "category": "calculation",
+      "problem_latex": "x+9=14",
+      "solution_text": "x+9=14\nx=6",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G30",
+      "category": "correct",
+      "problem_latex": "3x=18",
+      "solution_text": "3x=18\nx=6",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G31",
+      "category": "correct",
+      "problem_latex": "x+9=14",
+      "solution_text": "x+9=14\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G32",
+      "category": "correct",
+      "problem_latex": "8x-1=31",
+      "solution_text": "8x-1=31\n8x=32\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G33",
+      "category": "calculation",
+      "problem_latex": "8x-1=31",
+      "solution_text": "8x-1=31\n8x=32\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G34",
+      "category": "correct",
+      "problem_latex": "x/4=3",
+      "solution_text": "x/4=3\nx=12",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G35",
+      "category": "calculation",
+      "problem_latex": "x/4=3",
+      "solution_text": "x/4=3\nx=7",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G36",
+      "category": "correct",
+      "problem_latex": "3(x+2)=15",
+      "solution_text": "3(x+2)=15\n3x+6=15\n3x=9\nx=3",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G37",
+      "category": "distribution",
+      "problem_latex": "3(x+2)=15",
+      "solution_text": "3(x+2)=15\n3x+2=15",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G38",
+      "category": "distribution",
+      "problem_latex": "5(x-1)=20",
+      "solution_text": "5(x-1)=20\n5x-1=20",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G39",
+      "category": "correct",
+      "problem_latex": "5(x-1)=20",
+      "solution_text": "5(x-1)=20\n5x-5=20\n5x=25\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G40",
+      "category": "distribution",
+      "problem_latex": "2(x+4)=16",
+      "solution_text": "2(x+4)=16\n2x+4=16",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G41",
+      "category": "distribution",
+      "problem_latex": "3(x-2)=9",
+      "solution_text": "3(x-2)=9\n3x+2=9",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G42",
+      "category": "correct",
+      "problem_latex": "3(x-2)=9",
+      "solution_text": "3(x-2)=9\n3x-6=9\n3x=15\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G43",
+      "category": "distribution",
+      "problem_latex": "4x+2(x-3)=24",
+      "solution_text": "4x+2(x-3)=24\n4x+2x-3=24",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G44",
+      "category": "correct",
+      "problem_latex": "4x+2(x-3)=24",
+      "solution_text": "4x+2(x-3)=24\n4x+2x-6=24\n6x=30\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G45",
+      "category": "distribution",
+      "problem_latex": "-2(x-3)=6",
+      "solution_text": "-2(x-3)=6\n-2x-3=6",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G46",
+      "category": "correct",
+      "problem_latex": "-2(x-3)=6",
+      "solution_text": "-2(x-3)=6\n-2x+6=6\n-2x=0\nx=0",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G47",
+      "category": "distribution",
+      "problem_latex": "3(2x+1)=15",
+      "solution_text": "3(2x+1)=15\n6x+1=15",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G48",
+      "category": "correct",
+      "problem_latex": "3(2x+1)=15",
+      "solution_text": "3(2x+1)=15\n6x+3=15\n6x=12\nx=2",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G49",
+      "category": "distribution",
+      "problem_latex": "2(x+3)=10",
+      "solution_text": "2(x+3)=10\n2x-3=10",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "distribution",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G50",
+      "category": "correct",
+      "problem_latex": "2(x+3)=10",
+      "solution_text": "2(x+3)=10\n2x+6=10\n2x=4\nx=2",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G51",
+      "category": "transposition",
+      "problem_latex": "x+8=15",
+      "solution_text": "x+8=15\nx=23",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G52",
+      "category": "correct",
+      "problem_latex": "x+8=15",
+      "solution_text": "x+8=15\nx=7",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G53",
+      "category": "transposition",
+      "problem_latex": "x-6=10",
+      "solution_text": "x-6=10\nx=4",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G54",
+      "category": "correct",
+      "problem_latex": "x-6=10",
+      "solution_text": "x-6=10\nx=16",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G55",
+      "category": "transposition",
+      "problem_latex": "2x+9=17",
+      "solution_text": "2x+9=17\n2x=26",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G56",
+      "category": "correct",
+      "problem_latex": "2x+9=17",
+      "solution_text": "2x+9=17\n2x=8\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G57",
+      "category": "transposition",
+      "problem_latex": "3x-7=20",
+      "solution_text": "3x-7=20\n3x=13",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G58",
+      "category": "correct",
+      "problem_latex": "3x-7=20",
+      "solution_text": "3x-7=20\n3x=27\nx=9",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G59",
+      "category": "transposition",
+      "problem_latex": "4x+5=21",
+      "solution_text": "4x+5=21\n4x=26",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G60",
+      "category": "correct",
+      "problem_latex": "4x+5=21",
+      "solution_text": "4x+5=21\n4x=16\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G61",
+      "category": "transposition",
+      "problem_latex": "5x-8=42",
+      "solution_text": "5x-8=42\n5x=34",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G62",
+      "category": "correct",
+      "problem_latex": "5x-8=42",
+      "solution_text": "5x-8=42\n5x=50\nx=10",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G63",
+      "category": "transposition",
+      "problem_latex": "2x+6=14",
+      "solution_text": "2x+6=14\n2x=14",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G64",
+      "category": "transposition",
+      "problem_latex": "3x+5=20",
+      "solution_text": "3x+5=20\n3x=20",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G65",
+      "category": "transposition",
+      "problem_latex": "x+9=14",
+      "solution_text": "x+9=14\nx=14",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G66",
+      "category": "correct",
+      "problem_latex": "x/3+2=6",
+      "solution_text": "x/3+2=6\nx/3=4\nx=12",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G67",
+      "category": "calculation",
+      "problem_latex": "x/3+2=6",
+      "solution_text": "x/3+2=6\nx/3=4\nx=8",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G68",
+      "category": "correct",
+      "problem_latex": "x/5=4",
+      "solution_text": "x/5=4\nx=20",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G69",
+      "category": "calculation",
+      "problem_latex": "x/5=4",
+      "solution_text": "x/5=4\nx=9",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G70",
+      "category": "correct",
+      "problem_latex": "2x/3=8",
+      "solution_text": "2x/3=8\n2x=24\nx=12",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G71",
+      "category": "calculation",
+      "problem_latex": "2x/3=8",
+      "solution_text": "2x/3=8\n2x=24\nx=11",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G72",
+      "category": "correct",
+      "problem_latex": "(x+2)/3=4",
+      "solution_text": "(x+2)/3=4\nx+2=12\nx=10",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G73",
+      "category": "transposition",
+      "problem_latex": "(x+2)/3=4",
+      "solution_text": "(x+2)/3=4\nx+2=12\nx=14",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "concept_error",
+        "skill": "transposition",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G74",
+      "category": "correct",
+      "problem_latex": "x/2-1=4",
+      "solution_text": "x/2-1=4\nx/2=5\nx=10",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G75",
+      "category": "calculation",
+      "problem_latex": "x/2-1=4",
+      "solution_text": "x/2-1=4\nx/2=5\nx=7",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G76",
+      "category": "correct",
+      "problem_latex": "3x+1=2x+7",
+      "solution_text": "3x+1=2x+7\n3x-2x=7-1\nx=6",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G77",
+      "category": "calculation",
+      "problem_latex": "3x+1=2x+7",
+      "solution_text": "3x+1=2x+7\n3x-2x=7-1\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G78",
+      "category": "correct",
+      "problem_latex": "5x-2=3x+8",
+      "solution_text": "5x-2=3x+8\n5x-3x=8+2\n2x=10\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G79",
+      "category": "calculation",
+      "problem_latex": "5x-2=3x+8",
+      "solution_text": "5x-2=3x+8\n5x-3x=8+2\n2x=10\nx=4",
+      "expected": {
+        "correct": false,
+        "error_step": 4,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G80",
+      "category": "correct",
+      "problem_latex": "4x+3=x+15",
+      "solution_text": "4x+3=x+15\n4x-x=15-3\n3x=12\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G81",
+      "category": "calculation",
+      "problem_latex": "4x+3=x+15",
+      "solution_text": "4x+3=x+15\n4x-x=15-3\n3x=12\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 4,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G82",
+      "category": "correct",
+      "problem_latex": "2x+5=3x",
+      "solution_text": "2x+5=3x\n2x-3x=-5\n-x=-5\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G83",
+      "category": "calculation",
+      "problem_latex": "2x+5=3x",
+      "solution_text": "2x+5=3x\n2x-3x=-5\n-x=-5\nx=-5",
+      "expected": {
+        "correct": false,
+        "error_step": 4,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G84",
+      "category": "correct",
+      "problem_latex": "7x-4=3x+16",
+      "solution_text": "7x-4=3x+16\n7x-3x=16+4\n4x=20\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G85",
+      "category": "calculation",
+      "problem_latex": "7x-4=3x+16",
+      "solution_text": "7x-4=3x+16\n7x-3x=16+4\n4x=20\nx=6",
+      "expected": {
+        "correct": false,
+        "error_step": 4,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G86",
+      "category": "correct",
+      "problem_latex": "0.5x+2=7",
+      "solution_text": "0.5x+2=7\n0.5x=5\nx=10",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G87",
+      "category": "calculation",
+      "problem_latex": "0.5x+2=7",
+      "solution_text": "0.5x+2=7\n0.5x=5\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G88",
+      "category": "correct",
+      "problem_latex": "-3x=12",
+      "solution_text": "-3x=12\nx=-4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G89",
+      "category": "calculation",
+      "problem_latex": "-3x=12",
+      "solution_text": "-3x=12\nx=4",
+      "expected": {
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G90",
+      "category": "correct",
+      "problem_latex": "-2x+7=1",
+      "solution_text": "-2x+7=1\n-2x=-6\nx=3",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G91",
+      "category": "calculation",
+      "problem_latex": "-2x+7=1",
+      "solution_text": "-2x+7=1\n-2x=-6\nx=-3",
+      "expected": {
+        "correct": false,
+        "error_step": 3,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G92",
+      "category": "correct",
+      "problem_latex": "3(x+1)=18",
+      "solution_text": "3(x+1)=18\n3x+3=18\n3x=15\nx=5",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G93",
+      "category": "calculation",
+      "problem_latex": "3(x+1)=18",
+      "solution_text": "3(x+1)=18\n3x+3=18\n3x=15\nx=6",
+      "expected": {
+        "correct": false,
+        "error_step": 4,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G94",
+      "category": "correct",
+      "problem_latex": "5(x-2)+3=13",
+      "solution_text": "5(x-2)+3=13\n5x-10+3=13\n5x-7=13\n5x=20\nx=4",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G95",
+      "category": "calculation",
+      "problem_latex": "5(x-2)+3=13",
+      "solution_text": "5(x-2)+3=13\n5x-10+3=13\n5x-7=13\n5x=20\nx=5",
+      "expected": {
+        "correct": false,
+        "error_step": 5,
+        "error_type": "calculation",
+        "skill": "arithmetic",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G96",
+      "category": "correct",
+      "problem_latex": "2(x+1)+3=11",
+      "solution_text": "2(x+1)+3=11\n2x+2+3=11\n2x+5=11\n2x=6\nx=3",
+      "expected": {
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "skill": "linear_equation",
+        "state": "learning"
+      }
+    },
+    {
+      "id": "G97",
+      "category": "comprehension",
+      "problem_latex": "4x-1=11",
+      "solution_text": "4x-1=7\n4x=8\nx=2",
+      "expected": {
+        "correct": false,
+        "error_step": 1,
+        "error_type": "comprehension",
+        "skill": "linear_equation",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G98",
+      "category": "comprehension",
+      "problem_latex": "2x-5=3",
+      "solution_text": "2x+5=3\n2x=-2\nx=-1",
+      "expected": {
+        "correct": false,
+        "error_step": 1,
+        "error_type": "comprehension",
+        "skill": "linear_equation",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G99",
+      "category": "comprehension",
+      "problem_latex": "2x-5=3",
+      "solution_text": "3x-5=3\n3x=8\nx=8/3",
+      "expected": {
+        "correct": false,
+        "error_step": 1,
+        "error_type": "comprehension",
+        "skill": "linear_equation",
+        "state": "needs_practice"
+      }
+    },
+    {
+      "id": "G100",
+      "category": "comprehension",
+      "problem_latex": "6x+2=20",
+      "solution_text": "6x+2=22\n6x=20\nx=10",
+      "expected": {
+        "correct": false,
+        "error_step": 1,
+        "error_type": "comprehension",
+        "skill": "linear_equation",
+        "state": "needs_practice"
+      }
+    }
+  ]
+}

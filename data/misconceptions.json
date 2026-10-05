@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "curriculum": "공통수학1",
+    "version": "1.0.0",
+    "description": "오개념(misconception) taxonomy. misconception은 오류를 발생시킨 '개념적 원인'이며, 관찰된 오류 형태는 error_types.json이 담당한다.",
+    "note": "2.1, 3.1은 기존 코드에 하드코딩된 ID이며 의미를 변경하지 않는다. 단순 계산 실수에는 misconception을 부여하지 않는다. 지수·로그·삼각함수·수열 관련 오개념은 공통수학1 범위 밖이므로 본 목록에서 제외."
+  },
+  "misconceptions": [
+    {
+      "misconception_id": "1.1",
+      "name": "음수 부호 처리 오해",
+      "description": "음수의 부호를 연산 중에 잘못 처리하는 개념적 오해. 예를 들어 음수×음수를 음수로 판단하거나, 뺄셈을 더하기로 잘못 해석한다.",
+      "related_skill_ids": ["arithmetic"],
+      "typical_error_types": ["calculation"],
+      "typical_error_subtypes": ["sign_slip"],
+      "example_patterns": [
+        "3-(-5)=3-5=-2",
+        "(-2)*(-3)=-6"
+      ]
+    },
+    {
+      "misconception_id": "1.2",
+      "name": "분수의 통분·약분 오해",
+      "description": "분수의 덧셈에서 분모를 통분하지 않거나, 약분을 잘못 수행하는 개념적 오해.",
+      "related_skill_ids": ["arithmetic"],
+      "typical_error_types": ["calculation"],
+      "typical_error_subtypes": ["fraction_slip"],
+      "example_patterns": [
+        "1/2 + 1/3 = 2/5",
+        "2/4 + 1/4 = 3/8"
+      ]
+    },
+    {
+      "misconception_id": "2.1",
+      "name": "분배법칙 누락",
+      "description": "분배법칙에서 괄호 안의 각 항에 계수를 곱해야 한다는 개념을 이해하지 못해, 일부 항에만 계수를 곱하거나 부호를 잘못 처리하는 오해. (기존 코드 하드코딩 ID — 의미 고정)",
+      "related_skill_ids": ["distribution", "polynomial_multiplication"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["distribution_omit"],
+      "example_patterns": [
+        "2(x-3) → 2x-3",
+        "-2(x-3) → -2x-3",
+        "3(2x+1) → 6x+1"
+      ]
+    },
+    {
+      "misconception_id": "2.2",
+      "name": "동류항 오판단",
+      "description": "동류항만 계산해야 한다는 개념을 이해하지 못하고, 차수가 다른 항이나 서로 다른 종류의 항을 더하거나 빼는 오해.",
+      "related_skill_ids": ["polynomial_addition"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["unlike_terms"],
+      "example_patterns": [
+        "3x+2 → 5x",
+        "3x+2x^2 → 5x^2",
+        "x+x → x^2"
+      ]
+    },
+    {
+      "misconception_id": "2.3",
+      "name": "인수분해 공식의 조건 오해",
+      "description": "인수분해 공식의 적용 조건을 이해하지 못하고, 제곱의 차와 완전제곱을 혼동하거나 계수·부호 대응을 잘못하는 오해.",
+      "related_skill_ids": ["factoring_formula"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["factoring_confusion"],
+      "example_patterns": [
+        "x^2-4 → (x-2)^2",
+        "x^2+2x+1 → (x+1)(x-1)",
+        "x^2-5x+6 → (x-1)(x-6)"
+      ]
+    },
+    {
+      "misconception_id": "2.4",
+      "name": "인수분해와 전개의 혼동",
+      "description": "인수분해와 전개가 서로 역변환 관계라는 개념을 이해하지 못하고, 인수분해를 요구받았는데 전개로 응답하거나 그 반대의 오해.",
+      "related_skill_ids": ["factoring_common", "factoring_application"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["factoring_confusion"],
+      "example_patterns": [
+        "x^2-4 를 인수분해하라는 문제에 x^2-4 로 응답",
+        "(x-2)(x+2) 을 전개하라는 문제에 x^2-4 로 응답"
+      ]
+    },
+    {
+      "misconception_id": "3.1",
+      "name": "이항 시 부호 미변경",
+      "description": "항을 등식의 다른 변으로 옮길 때 부호를 바꾸어야 한다는 등식의 성질을 이해하지 못하는 오해. (기존 코드 하드코딩 ID — 의미 고정)",
+      "related_skill_ids": ["transposition", "linear_equation"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["sign_not_flipped"],
+      "example_patterns": [
+        "3x+5=20 → 3x=25",
+        "2x-6=6 → 2x=0",
+        "x+8=15 → x=23"
+      ]
+    },
+    {
+      "misconception_id": "3.2",
+      "name": "등식 양변 조작 비대칭 오해",
+      "description": "등식의 양변에 같은 연산을 해야 한다는 개념을 이해하지 못하고, 한쪽 변에만 연산을 적용하거나 한쪽에서 뺀 항을 반대쪽에 반영하지 않는 오해.",
+      "related_skill_ids": ["transposition", "linear_equation"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["sign_not_flipped"],
+      "example_patterns": [
+        "2x+6=14 → 2x=14",
+        "3x=21 → 3x=7",
+        "x/2=5 → x=5"
+      ]
+    },
+    {
+      "misconception_id": "3.3",
+      "name": "근의 공식 부호·분모 오해",
+      "description": "근의 공식에서 -b의 부호나 분모 2a를 잘못 이해하는 오해.",
+      "related_skill_ids": ["quadratic_equation"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["formula_misuse"],
+      "example_patterns": [
+        "x=(b±sqrt(b^2-4ac))/2a",
+        "x=(-b±sqrt(b^2-4ac))/a",
+        "2x^2-3x+1=0 → x=(3±sqrt(9-8))/2"
+      ]
+    },
+    {
+      "misconception_id": "3.4",
+      "name": "판별식의 의미 오해",
+      "description": "판별식 D=b^2-4ac의 부호가 근의 개수와 성질을 결정한다는 개념을 잘못 이해한 오해.",
+      "related_skill_ids": ["quadratic_discriminant"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["formula_misuse"],
+      "example_patterns": [
+        "D<0 인데 실근이 있다고 판단",
+        "D=0 인데 서로 다른 두 실근이 있다고 판단"
+      ]
+    },
+    {
+      "misconception_id": "3.5",
+      "name": "계수와 근의 관계 오해",
+      "description": "근의 합이 -b/a, 근의 곱이 c/a라는 관계를 부호까지 포함하여 이해하지 못한 오해.",
+      "related_skill_ids": ["root_coefficient_relation"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["formula_misuse"],
+      "example_patterns": [
+        "x^2-5x+6=0 의 근의 합을 -5로 계산",
+        "x^2-5x+6=0 의 근의 곱을 -6으로 계산"
+      ]
+    },
+    {
+      "misconception_id": "3.6",
+      "name": "양변 나눗셈에서 0 가능성 미고려",
+      "description": "양변을 변수로 나누면 해가 유실될 수 있다는 개념을 이해하지 못한 오해.",
+      "related_skill_ids": ["higher_equation", "quadratic_equation"],
+      "typical_error_types": ["procedure"],
+      "typical_error_subtypes": ["incomplete_solution"],
+      "example_patterns": [
+        "x^2=x → x=1 (x=0 유실)",
+        "x^2-4x=0 → x=4 (x=0 유실)"
+      ]
+    },
+    {
+      "misconception_id": "3.7",
+      "name": "부등호 방향 미반전 오해",
+      "description": "양변에 음수를 곱하거나 나눌 때 부등호의 방향을 바꾸어야 한다는 개념을 이해하지 못한 오해.",
+      "related_skill_ids": ["quadratic_inequality", "absolute_inequality"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["inequality_sign"],
+      "example_patterns": [
+        "-2x>6 → x>-3",
+        "3x>-9 → x>3"
+      ]
+    },
+    {
+      "misconception_id": "3.8",
+      "name": "이차부등식 해의 구간 오해",
+      "description": "이차부등식의 해가 부호가 변하는 구간이라는 개념을 이해하지 못하고, 해를 반대로 구간 설정하거나 경계값을 포함 여부를 잘못 판단하는 오해.",
+      "related_skill_ids": ["quadratic_inequality"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["inequality_sign"],
+      "example_patterns": [
+        "(x-1)(x-2)>0 → 1<x<2",
+        "(x-1)(x-2)>=0 → x<=1 또는 x>=2"
+      ]
+    },
+    {
+      "misconception_id": "4.1",
+      "name": "집합의 원소와 부분집합 혼동",
+      "description": "원소 관계(∈)와 부분집합 관계(⊂)를 혼동하는 개념적 오해.",
+      "related_skill_ids": ["set_operation"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["formula_misuse"],
+      "example_patterns": [
+        "A={1,2} 일 때 1⊂A 로 표기",
+        "A={1,2}, B={{1},2} 일 때 1∈B 라고 판단"
+      ]
+    },
+    {
+      "misconception_id": "4.2",
+      "name": "명제의 부정·역·이·대우 혼동",
+      "description": "명제의 부정, 역, 이, 대우의 개념을 혼동하는 오해. 예를 들어 명제의 부정을 역으로 만드는 오류.",
+      "related_skill_ids": ["proposition", "proof_method"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["formula_misuse"],
+      "example_patterns": [
+        "p→q 의 부정을 q→p 로 만듦",
+        "p→q 의 이(수반)를 ~p→~q 로 판단"
+      ]
+    },
+    {
+      "misconception_id": "5.1",
+      "name": "유리함수의 수직점근선 오해",
+      "description": "유리함수의 수직점근선이 분모가 0이 되는 x값에서 발생한다는 개념을 이해하지 못한 오해.",
+      "related_skill_ids": ["rational_function"],
+      "typical_error_types": ["procedure"],
+      "typical_error_subtypes": ["domain_violation"],
+      "example_patterns": [
+        "y=1/(x-2) 의 점근선을 x=0 으로 판단",
+        "y=(x+1)/(x-3) 에서 x=3 을 정의역에 포함"
+      ]
+    },
+    {
+      "misconception_id": "5.2",
+      "name": "무리함수의 정의역 미고려",
+      "description": "무리함수에서 극호 안의 식이 0 이상이어야 한다는 정의역의 제약을 이해하지 못한 오해.",
+      "related_skill_ids": ["irrational_function"],
+      "typical_error_types": ["procedure"],
+      "typical_error_subtypes": ["domain_violation"],
+      "example_patterns": [
+        "y=sqrt(x-2) 의 정의역을 전체 실수로 판단",
+        "y=sqrt(2-x) 에서 x=5 를 정의역에 포함"
+      ]
+    },
+    {
+      "misconception_id": "5.3",
+      "name": "이차함수 계수와 그래프 방향 혼동",
+      "description": "이차함수에서 최고차항의 계수가 그래프의 방향을 결정한다는 개념을 이해하지 못한 오해.",
+      "related_skill_ids": ["quadratic_function"],
+      "typical_error_types": ["concept_error"],
+      "typical_error_subtypes": ["formula_misuse"],
+      "example_patterns": [
+        "y=-x^2+3 의 그래프를 아래로 볼록하게 그림",
+        "y=2x^2-1 의 그래프를 위로 볼록하게 그림"
+      ]
+    }
+  ]
+}
