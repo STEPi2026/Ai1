@@ -184,9 +184,17 @@ def test_expression_line_reported_as_unrecognized():
 
 
 def test_expression_problem_rejected():
+    """파싱은 되지만 등식이 아닌 문제식은 E_NOT_EQUATION 으로 분리한다 (A5).
+
+    E_BAD_PROBLEM(수식 해석 실패)은 학생이 고쳐 재시도할 수 있지만,
+    등식이 아님은 재시도해도 결과가 같으므로 Backend 가 다른 안내를 한다.
+    """
     r = client.post(
         "/analyze-solution",
         json={"problem_latex": "2x-6", "solution_text": "x=3"},
     )
     assert r.status_code == 422
-    assert r.json()["detail"]["code"] == "E_BAD_PROBLEM"
+    detail = r.json()["detail"]
+    assert detail["code"] == "E_NOT_EQUATION"
+    # 입력 오류를 UNKNOWN 으로 섞지 않는다
+    assert "analysis_status" not in detail

@@ -6,13 +6,14 @@
 ## 명령
 
 ```bash
-.venv\Scripts\python -m pytest            # 전체 (현재 940 passed)
-.venv\Scripts\pyflakes app tests          # lint (0건 유지)
+.venv\Scripts\python -m pytest            # 전체 (현재 1826 passed)
+.venv\Scripts\pyflakes app tests eval     # lint (0건 유지)
 .venv\Scripts\uvicorn app.main:app --reload
 ```
 
-의존성을 새로 추가해야 할 때는 **먼저 물어본다.** `.venv`는 uv로 만들어졌고
-`requirements.txt` 외에 설치된 것이 없다 (openpyxl조차 없음).
+새 의존성을 추가하기 전에는 **먼저 사용자 승인을 확인한다.** Google Vision SDK는
+이번 명시적 Vision 연동 요청에 따라 `requirements.txt`에 추가하고 프로젝트 `.venv`에
+설치했다. 이후 새 의존성은 별도 승인 없이 추가하지 않는다.
 
 ## 변경 시 반드시 지킬 것
 
@@ -59,21 +60,33 @@ BKT는 `is_correct_outcome()`으로 **이진 관측만** 한다(error_type을 ou
 `_MAX_STEPS=30` · 문제식 2000자 · 풀이 2만자 · 요청당 `solve()` 80회 예산(S2).
 가드를 통과시키기 위해 상한을 올리지 말고 상수 배치를 개선한다.
 
-## 현재 구현 범위와 남은 기능
+## 명세서에서 온 필수 반영 사항 (미구현 — 구현 시 체크)
 
-현재 text 기반 AI①은 풀이 검증·오류/오개념 분류·Knowledge State 갱신,
-단계 정렬 및 다중 오류 분석을 제공한다. Attempt 분석·멱등성·이력,
-학생 이력/기간 조회 및 오개념 TOP API도 구현되어 있다.
+대조표 기준 AI①이 아직 갖고 있지 않은 것:
 
-기능명세서 기준으로 아직 남은 항목:
-
-- **이미지 입력/OCR**: 앱 r36~r44의 사진 업로드·품질 검사·OCR·진행 상태.
-  OCR 서비스 경계와 공급자 결정이 필요하다.
-- **영속화**: 저장소와 Knowledge State는 현재 in-memory이며 MySQL 미연동.
-- **Skill ↔ Concept 매핑**: 방향은 별도 매핑 테이블로 결정했으나 공식 Concept seed가 없어 구현 보류.
-- **초기 Knowledge State 시드**: 진단평가 결과에서 시작 숙련도를 만드는 흐름.
-- **`weakness_score` 및 오개념 해결 상태**: 데이터 의미/정책 결정 필요.
-- **인증·권한 및 멀티프로세스 멱등성**: 서비스 통합 전 별도 설계 필요.
+- **이미지 입력 경로**: 앱 r36~r43 (촬영 → 크롭 → 품질검사 → multipart 업로드).
+  현재 text only. 흐림/어두움/빈 이미지 → "인식 불가 코드" 필요.
+- **`analysis_status`**: ~~현 계약은 `unrecognized` 배열로만 표현한다~~ → **구현됨(2026-11-13)**.
+  `ANALYZED` / `REVIEW_REQUIRED` / `UNKNOWN`. UNKNOWN은 422 + `detail.analysis_status`.
+  `REVIEW_REQUIRED`는 `correct=null`이며 Knowledge State를 갱신하지 않는다.
+- **응답 필드 네이밍**: 앱이 `step_list` / `is_correct` / `first_error_step_index` /
+  `misconception_tag`를 읽는다. 현 필드는 `steps_latex` / `valid` / `error_step` / `misconception_ids`.
+  앱을 현 계약에 맞출지 alias를 노출할지 **결정 필요**(대조표 §4-4).
+- **분석 이력 식별자**: `ai_analysis_results.attempt_id` + 앱 r57(재촬영 시 회차 연결).
+  `problem_id` 문자열만으로는 회차를 구분할 수 없다.
+- **`weakness_score`**: `student_states`에 필수 컬럼. `1 - mastery` 파생 여부 결정 필요.
+- **초기 Knowledge State 시드**: 앱 r27(진단평가 결과 → 최초 Knowledge State 생성 트리거).
+- **skill ↔ concept 매핑**: `concepts`/`problem_concepts`/`student_states.concept_id`가
+  concept ID 체계이고, 현 코드는 `data/skills.json`의 skill_id를 쓴다.
+- **개닝적 목록 API**: 웹 r26(숙련도 차트)·r30(오개념 TOP 5)·앱 r61/r62(오답 노트)는
+  학생 단위 skill/misconception **목록 조회**가 필요하다. 현 API는 단일 분석 결과만 반환한다.
+- **API prefix**: 명세는 `/api/v1/...`을 쓴다. attempt/students/ocr 라우트는 적용됨.
+  `/analyze-solution`은 하위호환 때문에 prefix 없는 경로를 유지한다(둘 다 같은 파이프라인).
+- **A6 P1 표현식 문제**: 구현됨(2026-11-13). `problem_type`(기본 `equation`) ·
+  `target_form`(`integer`/`expanded`/`factored`) · 부등식은 `E_UNSUPPORTED_INEQUALITY`,
+  함수 표기는 `E_UNSUPPORTED_FUNCTION`으로 fail-closed. 기획 확정(2026-11-16):
+  B4 P1 제외, Q-A6-3 현행 `procedure` 유지. 계약·회귀 목록은
+  `docs/AI1_표현식문제_계약초안_A6.md` §13~§15.
 
 ## 하지 않는 것
 

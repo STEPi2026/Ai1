@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.pipeline.analyzer import reset_knowledge
-from app.pipeline.repository import get_repository, reset_repository
+from app.pipeline.repository import RepositoryError, get_repository, reset_repository
 from app.pipeline.session import ErrorRecord, KnowledgeObservation
 from app.taxonomy import is_valid_misconception_id
 
@@ -104,6 +104,35 @@ def test_error_attempt_records_error_and_misconception():
     assert b["state"] == "needs_practice"
 
 
+def test_first_error_step_index_and_error_evidence_fields():
+    """PHASE 9-9C.9A 갭 보강 (A-01) — 명세 매핑 필드의 존재까지 고정한다.
+
+    1단계 테스트 A-01의 판정 표시는 `first_error_step_index`와
+    `description_ko`·`evidence_latex` 를 본다. 기존 테스트는 `error_step` 만
+    고정했으므로 매핑 필드 존재를 별도로 고정한다 (`errors[]` 는 1-based
+    `step_no`, taxonomy 기반 type/subtype 을 함께 옮긴다).
+    """
+    r = post("A2", "2(x-3)=6\n2x-3=6")
+    b = r.json()
+    assert b["first_error_step_index"] == 2
+    assert len(b["errors"]) == 1
+    record = b["errors"][0]
+    assert record["step_no"] == 2
+    assert record["evidence_latex"] == "2x-3=6"
+    assert record["description_ko"]
+    assert record["error_type"] == "concept_error"
+    assert record["error_subtype"] == "distribution_omit"
+
+
+def test_correct_attempt_reports_no_errors():
+    """PHASE 9-9C.9A 갭 보강 (A-02) — 정답 풀이는 `errors[]` 가 비어 있다."""
+    r = post("A1", "2(x-3)=6\n2x-6=6\n2x=12\nx=6")
+    b = r.json()
+    assert b["analysis_status"] == "ANALYZED"
+    assert b["correct"] is True
+    assert b["errors"] == []
+
+
 def test_multi_error_exposed_in_errors_list():
     r = post("A3", "2(x-3)=6\n2x-6=7\n2x=13\nx=6")
     b = r.json()
@@ -171,6 +200,27 @@ def test_request_errors_have_no_analysis_status():
     assert r.status_code == 422
     assert d["code"] == "E_EMPTY_SOLUTION"
     assert "analysis_status" not in d
+
+
+def test_not_equation_422_without_storing():
+    """등식이 아닌 문제식은 E_NOT_EQUATION (A5).
+
+    E_BAD_PROBLEM(수식 해석 실패)과 달리 재시도해도 결과가 같으므로
+    Backend 는 저장 없이 "지원하지 않는 문제 유형"으로 안내한다.
+    """
+    r = client.post(
+        URL.format(attempt_id="U4"),
+        json={"problem_id": "P-EXPR", "problem_latex": "(x+1)(x+2)",
+              "student_id": "S1", "solution_text": "x^2+3x+2"},
+    )
+    assert r.status_code == 422
+    d = r.json()["detail"]
+    assert d["code"] == "E_NOT_EQUATION"
+    # 입력 오류를 UNKNOWN 으로 섞지 않는다
+    assert "analysis_status" not in d
+    # 분석을 시작하지 않으므로 attempt/분석이 저장되지 않는다
+    with pytest.raises(RepositoryError):
+        get_repository().get_attempt("U4")
 
 
 def test_input_too_large_413_without_status():
@@ -375,6 +425,9 @@ def test_response_field_set_is_stable():
         "mastery", "misconception_id", "confidence", "steps_latex", "valid",
         "unrecognized", "step_list", "errors", "observations", "misconception_tags",
         "states", "mastery_by_skill",
+        # PHASE 9-7 additive (Backend 전달 경계)
+        "misconception_tag", "official_skill_codes", "official_misconception_codes",
+        "provisional_skill_codes", "provisional_misconception_codes",
     }
 
 

@@ -145,7 +145,7 @@ def test_unknown_mapping_is_limited_to_analysis_outcomes():
         "E_UNVERIFIABLE": "UNKNOWN",
     }
     for code in (
-        "E_EMPTY_SOLUTION", "E_BAD_PROBLEM", "E_INPUT_TOO_LARGE",
+        "E_EMPTY_SOLUTION", "E_BAD_PROBLEM", "E_NOT_EQUATION", "E_INPUT_TOO_LARGE",
         "E_UNKNOWN_SKILL", "E_SKILL_NOT_TRACKABLE", "E_INVALID_STUDENT_ID",
     ):
         assert code not in _ANALYSIS_STATUS_BY_ERROR
@@ -313,11 +313,16 @@ def test_session_path_review_required():
 
 
 def test_analyze_signature_unchanged():
-    """analyze() 인자·반환 계약은 그대로다 (키워드 추가 없음)."""
+    """analyze() 의 기존 인자 순서는 그대로이고, A6 P1 인자만 뒤에 추가된다."""
     import inspect
 
-    params = list(inspect.signature(analyze).parameters)
-    assert params == [
+    signature = inspect.signature(analyze)
+    params = list(signature.parameters)
+    assert params[:6] == [
         "problem_latex", "solution_text", "student_id", "engine",
         "problem_skill", "segmenter",
     ]
+    assert params[6:] == ["problem_type", "target_form"]
+    # 기존 호출부가 그대로 동작해야 한다 (생략 시 equation / None).
+    assert signature.parameters["problem_type"].default == "equation"
+    assert signature.parameters["target_form"].default is None

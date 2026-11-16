@@ -69,7 +69,7 @@ def test_problem_many_to_many_with_skills():
     a = Problem(problem_id="A", problem_latex="2x=6", skills=["linear_equation"])
     b = Problem(problem_id="B", problem_latex="2(x-3)=6", skills=["distribution"])
     c = Problem(problem_id="C", problem_latex="3(x-2)=9", skills=["distribution"])
-    assert a.skills[0] == b.skills[0] or True  # 서로 다른 문제/스킬 조합 존재
+    assert a.skills[0] != b.skills[0]  # 서로 다른 문제/스킬 조합 존재 (M:N)
     assert "distribution" in b.skills and "distribution" in c.skills  # 1 skill : N problems
     assert len(b.skills) == 1 and len(DIST_PROBLEM.skills) == 2  # N skills : 1 problem
 

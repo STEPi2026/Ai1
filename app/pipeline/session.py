@@ -46,13 +46,18 @@ from .analyzer import (
     _MAX_STEPS,
     AnalysisError,
     UntrackableSkillError,
+    UnsupportedFunctionError,
+    UnsupportedInequalityError,
     analysis_status_of,
     get_engine,
+    validate_problem_mode,
 )
-from .classifier import classify
+from .classifier import classify, form_violation_info
+from .inequality import has_inequality_operator
 from .knowledge import SKILL_LINEAR, validate_student_id
+from .notation import has_function_notation
 from .parser import parse_line, split_steps
-from .verifier import _SolveBudget, equivalent, verify
+from .verifier import _SolveBudget, equivalent, verify, verify_expression
 
 # taxonomy 이름 lookup (description_ko 생성용)
 _ERROR_TYPE_NAMES = {e.error_type_id: e.name for e in ERROR_TYPE_CATALOG.error_types}
@@ -626,6 +631,16 @@ class StudentAttempt(BaseModel):
     steps: list[SolutionStep] = Field(
         default_factory=list, description="미지정 시 solution_text에서 단계 분리"
     )
+    problem_type: Literal["equation", "expression"] = Field(
+        "equation",
+        description=(
+            "A6 P1: 이 시도의 문제 유형. 같은 attempt_id 로 다른 유형을 보내면 "
+            "분석 결과가 달라지므로 충돌(409)로 거절한다."
+        ),
+    )
+    target_form: str | None = Field(
+        None, description="A6 P1: expression 문제의 요구 결과 형태"
+    )
     analysis: "AttemptAnalysis | None" = None
 
     @field_validator("student_id")
@@ -660,7 +675,13 @@ class AttemptAnalysis(BaseModel):
     attempt_id: str
     problem_id: str
     student_id: str
-    correct: bool
+    correct: bool | None = Field(
+        None,
+        description=(
+            "ANALYZED 이면 true/false. REVIEW_REQUIRED(판정 보류)이면 null 이며 "
+            "KnowledgeObservation 을 만들지 않는다."
+        ),
+    )
     observed_skill_ids: list[str] = Field(
         default_factory=list, description="이번 시도에서 실제로 관측된 Skill"
     )
@@ -690,7 +711,12 @@ StudentAttempt.model_rebuild()
 # 흐름 연결
 # ---------------------------------------------------------------------------
 
-def _check_parsing(problem: Problem, steps: list[str], solution_text: str) -> None:
+def _check_parsing(
+    problem: Problem,
+    steps: list[str],
+    solution_text: str,
+    problem_type: str = "equation",
+) -> None:
     """analyze()와 동일한 입력 정책 (에러 코드/메시지 유지)."""
     if not steps:
         raise AnalysisError("E_EMPTY_SOLUTION", "풀이 단계가 비어 있습니다.")
@@ -704,9 +730,22 @@ def _check_parsing(problem: Problem, steps: list[str], solution_text: str) -> No
         raise AnalysisError(
             "E_INPUT_TOO_LARGE", f"풀이 단계가 너무 많습니다 (최대 {_MAX_STEPS}단계)."
         )
+    # A6 P1 — 부등식은 범위 밖. 유형 선언과 무관하게 분석하지 않는다.
+    if has_inequality_operator(problem.problem_latex):
+        raise UnsupportedInequalityError()
+    # A6 P1 — 함수 표기도 범위 밖(B4). f(x) 가 f*x 로 오독되는 것을 막는다.
+    if has_function_notation(problem.problem_latex):
+        raise UnsupportedFunctionError()
     node = parse_line(problem.problem_latex)
-    if node is None or node[0] != "eq":
+    if node is None:
+        # 수식 자체를 해석하지 못함 — 학생이 고쳐서 재시도할 수 있다
         raise AnalysisError("E_BAD_PROBLEM", "문제식을 인식할 수 없습니다.")
+    if problem_type == "equation" and node[0] != "eq":
+        # 파싱은 됐지만 등식이 아님(표현식 전용 문제). 재시도해도 결과가 같다
+        raise AnalysisError(
+            "E_NOT_EQUATION",
+            "문제식이 등식이 아닙니다. 등식 형태의 문제만 지원합니다.",
+        )
 
 
 def _alignment_is_usable(alignment: "StepAlignment | None") -> bool:
@@ -803,17 +842,77 @@ def _classify_error_steps(
     return errors, downstream
 
 
+def _review_analysis(
+    problem: Problem,
+    attempt: StudentAttempt,
+    verdict,
+    engine: str,
+) -> AttemptAnalysis:
+    """REVIEW_REQUIRED — 판정 보류. Knowledge State/관측을 만들지 않는다."""
+    skill = problem.primary_tracking_skill()
+    kb = get_engine(engine)
+    student_id = attempt.student_id
+    unrecognized_set = set(verdict.unrecognized)
+    attempt = attempt.model_copy(
+        update={
+            "steps": [
+                step.model_copy(update={"unrecognized": step.step_no in unrecognized_set})
+                for step in attempt.steps
+            ]
+        }
+    )
+    api_response = {
+        "correct": None,
+        "error_step": None,
+        "error_type": None,
+        "skill": skill,
+        "state": kb.state(student_id, skill),
+        "mastery": kb.mastery(student_id, skill),
+        "misconception_id": None,
+        "confidence": None,
+        "steps_latex": [s.latex_text for s in attempt.steps],
+        "valid": verdict.valid,
+        "unrecognized": verdict.unrecognized,
+        "analysis_status": "REVIEW_REQUIRED",
+        "skills": [skill],
+        "skill_ids": [skill],
+        "error_subtype": None,
+        "misconception_ids": [],
+    }
+    return AttemptAnalysis(
+        attempt=attempt,
+        attempt_id=attempt.attempt_id,
+        problem_id=problem.problem_id,
+        student_id=student_id,
+        correct=None,
+        observed_skill_ids=[],
+        errors=[],
+        suppressed_downstream_steps=[],
+        observations=[],
+        alignment=None,
+        states={},
+        mastery={},
+        api_response=api_response,
+    )
+
+
 def analyze_attempt(
     problem: Problem,
     attempt: StudentAttempt,
     solution: CorrectSolution | None = None,
     engine: str = "rule",
+    problem_type: str = "equation",
+    target_form: str | None = None,
 ) -> AttemptAnalysis:
     """Problem + StudentAttempt → Error[] → KnowledgeObservation[] → Knowledge State.
 
     기존 analyze()와 동일한 verifier/classifier를 재사용하되, 관측 단위를
     '문제 하나가 아닌 실제로 관측된 Skill'로 세운다. 관측되지 않은 Skill은
     Knowledge State를 건드리지 않는다.
+
+    A6 P1: ``problem_type='expression'`` 이면 식 동치 + target_form 검사로 판정한다.
+    부등식은 분석 전에 거절하고, 판정 보류(REVIEW_REQUIRED)는 Knowledge State 를
+    갱신하지 않는다.
     """
     if attempt.problem_id != problem.problem_id:
         raise ValueError(
@@ -824,11 +923,30 @@ def analyze_attempt(
             f"solution.problem_id({solution.problem_id}) != problem.problem_id({problem.problem_id})"
         )
 
+    # 부등식은 유형 선언과 무관하게 먼저 거절한다 — analyze() 와 같은 우선순위
+    # (부등식 + 잘못된 target_form 조합도 E_UNSUPPORTED_INEQUALITY 로 응답).
+    if has_inequality_operator(problem.problem_latex):
+        raise UnsupportedInequalityError()
+    if has_function_notation(problem.problem_latex):
+        raise UnsupportedFunctionError()
+    validate_problem_mode(problem_type, target_form)
     steps = attempt.steps
     step_texts = [s.latex_text for s in steps]
-    _check_parsing(problem, step_texts, attempt.solution_text)
+    _check_parsing(problem, step_texts, attempt.solution_text, problem_type)
 
-    verdict = verify(problem.problem_latex, step_texts)
+    verdict = (
+        verify_expression(problem.problem_latex, step_texts, target_form)
+        if problem_type == "expression"
+        else verify(problem.problem_latex, step_texts)
+    )
+    if verdict.review_reasons:
+        if not any(p is not None for p in verdict.parsed):
+            raise AnalysisError(
+                "E_UNRECOGNIZED",
+                "모든 풀이 단계를 인식하지 못했습니다. 직접 입력으로 다시 시도해 주세요.",
+            )
+        return _review_analysis(problem, attempt, verdict, engine)
+
     if not any(p is not None for p in verdict.parsed):
         raise AnalysisError(
             "E_UNRECOGNIZED",
@@ -874,6 +992,32 @@ def analyze_attempt(
     errors, downstream_steps = _classify_error_steps(
         problem, verdict, step_texts, attempt.attempt_id, alignment
     )
+
+    if verdict.form_violation_index is not None:
+        # A6 P1 — 동치는 성립하지만 마지막 줄이 요구 형태(target_form)가 아니다.
+        # valid=False 가 아니므로 일반 오류 수집에 잡히지 않는다 — 직접 만든다.
+        idx = verdict.form_violation_index
+        info = form_violation_info(problem.primary_tracking_skill())
+        errors = [
+            ErrorRecord(
+                error_id=f"{attempt.attempt_id}-E{idx + 1}",
+                attempt_id=attempt.attempt_id,
+                step_no=idx + 1,
+                ref_step_no=(
+                    verdict.ref_step_no[idx] if idx < len(verdict.ref_step_no) else None
+                ),
+                ref_solution_step_no=None,
+                error_type=info.error_type,
+                error_subtype=info.error_subtype,
+                skill_ids=list(info.skill_ids),
+                misconception_ids=list(info.misconception_ids),
+                confidence=info.confidence,
+                evidence_latex=step_texts[idx],
+                description_ko=_describe_ko(
+                    info.error_type, info.error_subtype, list(info.misconception_ids)
+                ),
+            )
+        ]
 
     primary_skill: str
     primary_error_type: str | None = None
@@ -938,9 +1082,19 @@ def analyze_attempt(
         states[obs.skill_id] = kb.state(obs.student_id, obs.skill_id)
         mastery[obs.skill_id] = kb.mastery(obs.student_id, obs.skill_id)
 
-        api_response = {
-            "correct": correct,
-        "error_step": errors[0].step_no if errors else None,
+    # 응답 조립은 관측 루프 밖에서 한다. 연쇄 오류로 모든 후보가 억제되어
+    # observations 가 비는 경우에도 UnboundLocalError 없이 응답해야 한다.
+    api_response = {
+        "correct": correct,
+        "error_step": (
+            errors[0].step_no
+            if errors
+            else (
+                verdict.first_error_index + 1
+                if verdict.first_error_index is not None
+                else None
+            )
+        ),
         "error_type": primary_error_type,
         "skill": primary_skill,
         "state": states.get(primary_skill, kb.state(attempt.student_id, primary_skill)),

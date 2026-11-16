@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sympy import Eq, Poly, count_ops, simplify, solve
+from sympy import Eq, Poly, count_ops, expand, simplify, solve
 
+from .forms import form_matches
+from .notation import has_function_notation
 from .parser import parse_line
 
 # solve() 복잡도 가드 — 고차/비다항식은 풀이 시도 자체를 보류한다.
@@ -32,6 +34,11 @@ class Verdict:
     # steps[i]를 대조한 기준 줄 번호(1-based). None이면 문제식이 기준이다.
     # Phase 6의 Error.ref_step_no가 이 값을 사용한다 (additive).
     ref_step_no: list[int | None] = field(default_factory=list)
+    # --- A6 P1 (표현식 모드) ---
+    # 판정을 보류해야 하는 사유. 하나라도 있으면 analysis_status=REVIEW_REQUIRED.
+    review_reasons: list[str] = field(default_factory=list)
+    # 마지막 줄이 target_form 을 만족하지 못한 단계(0-based). 없으면 None.
+    form_violation_index: int | None = None
 
 
 def _free_symbols(*nodes) -> set:
@@ -116,6 +123,62 @@ def _is_nonzero_multiple(a, b) -> bool:
         return False
 
 
+def _residual_kind(residual) -> str:
+    """등식의 잔차(좌변-우변)를 해 집합 기준으로 분류한다.
+
+    - ``identity``: 잔차가 항등적으로 0 → 해 집합 = **전체 실수**
+    - ``contradiction``: 잔차가 0 이 아닌 상수 → 해 집합 = **공집합**
+    - ``other``: 그 외 → 해 집합은 solve() 로 구해야 한다
+
+    sympy ``solve()`` 는 항등식과 모순을 **둘 다 ``[]``** 로 돌려준다. 그래서 두 경우를
+    구분하지 않으면 ``_same_solution_set([], [])`` 가 True 가 되어
+    "모든 x" 와 "해 없음" 을 동치로 오판한다.
+
+    실측(S1-3): ``5x-3=5x-3``(항등식) ↔ ``5x-3=5x-2``(모순) 이 True 로 나왔다.
+
+    비용: 핫패스(모든 등식 쌍)에서 부르지 않는다. **solve() 결과가 한쪽이라도 빈
+    경우에만** ``_compare_degenerate`` 를 통해 호출된다. 그래서 여기서는
+    ``simplify`` 대신 ``expand`` 로 충분하다(다항식 전개가 훨씬 싸다).
+    """
+    try:
+        expanded = expand(residual)
+    except Exception:
+        return "other"
+    try:
+        if expanded.free_symbols:
+            return "other"
+        return "identity" if expanded == 0 else "contradiction"
+    except Exception:
+        return "other"
+
+
+def _compare_degenerate(a, b) -> bool | None:
+    """한쪽이라도 solve() 결과가 빈 경우의 동치 판정.
+
+    ``solve()`` 는 **항등식(모든 x)** 과 **모순(해 없음)** 을 구분하지 못하고 둘 다
+    ``[]`` 로 준다. 이 경로에서만 잔차 종류를 확인해 둘을 갈라낸다.
+
+    - 두 쪽 모두 확정(항등식/모순)이면 **같은 종류일 때만** 동치
+    - 한쪽만 항등식이면 다른 쪽은 '모든 실수'일 수 없다 → 비동치
+    - 그 외(모순 ↔ 일반식, 해석 불가 ↔ …)는 보류(None)
+
+    핫패스(양쪽 모두 해가 있는 보통 비교)에서는 부르지 않는다. 희귀 경로이므로
+    ``simplify`` 를 써도 된다.
+    """
+    ka = _residual_kind(a[1] - a[2])
+    kb = _residual_kind(b[1] - b[2])
+    if ka != "other" and kb != "other":
+        return ka == kb
+    if ka == "identity" or kb == "identity":
+        return False
+    try:
+        if simplify((a[1] - a[2]) - (b[1] - b[2])) == 0:
+            return True
+    except Exception:
+        return None
+    return None
+
+
 def _normalize_solutions(sols) -> tuple[frozenset, bool] | None:
     """solve(..., dict=True) 결과를 비교 가능한 형태로 정규화.
 
@@ -156,7 +219,8 @@ def _multivariate_equivalent(a, b, syms, budget: _SolveBudget | None) -> bool | 
     if not isinstance(sa, list) or not isinstance(sb, list):
         return None
     if not sa and not sb:
-        return True  # 둘 다 해 없음(모순 등) → 동치
+        # solve() 가 [] 를 준 경우: 항등식('모든 실수')과 모순('해 없음')을 갈라낸다
+        return _compare_degenerate(a, b)
     if not sa or not sb:
         return False  # 한쪽만 해 없음 → 확정적 비동치
     na = _normalize_solutions(sa)
@@ -186,6 +250,9 @@ def equivalent(a, b, budget: _SolveBudget | None = None) -> bool | None:
         ② 다변수는 시스템 해 집합을 비교한다. fast path가 False를 반환하지
         않으므로 1변수 기존 판정은 원천적으로 보존된다.
         (x^2=0 ↔ x=0 은 계속 동치, x^2=16 ↮ x=4 는 계속 비동치)
+    S3: 항등식(잔차 0)과 모순(잔차=0 아닌 상수)을 구분한다. solve() 가 둘 다
+        [] 로 반환해 '모든 x' 와 '해 없음' 이 동치로 오판되던 문제를 막는다.
+        분류는 **한쪽이라도 해 집합이 빈 희귀 경로에서만** 수행한다(핫패스 비용 없음).
     """
     if a is None or b is None:
         return None
@@ -205,10 +272,8 @@ def equivalent(a, b, budget: _SolveBudget | None = None) -> bool | None:
             if budget is not None and not budget.take(2):
                 return None
             try:
-                return _same_solution_set(
-                    solve(Eq(a[1], a[2]), syms[0]),
-                    solve(Eq(b[1], b[2]), syms[0]),
-                )
+                sols_a = solve(Eq(a[1], a[2]), syms[0])
+                sols_b = solve(Eq(b[1], b[2]), syms[0])
             except Exception:
                 # solve() 실패 시에도 '잔차가 동일'은 동치의 충분조건이다.
                 # (비충분조건인 잔차 '차이' 비교로 False를 만들지 않는다)
@@ -216,6 +281,10 @@ def equivalent(a, b, budget: _SolveBudget | None = None) -> bool | None:
                     return simplify((a[1] - a[2]) - (b[1] - b[2])) == 0
                 except Exception:
                     return None
+            if not sols_a or not sols_b:
+                # 희귀 경로(해 없음/항등식) — 이때만 종류를 분류한다(핫패스 비용 회피)
+                return _compare_degenerate(a, b)
+            return _same_solution_set(sols_a, sols_b)
         return _multivariate_equivalent(a, b, syms, budget)
     if a[0] == "expr" and b[0] == "expr":
         try:
@@ -246,6 +315,19 @@ def verify(problem_latex: str, steps: list[str]) -> Verdict:
     parsed = [p if (p is not None and p[0] == "eq") else None for p in raw]
     unrecognized = [i + 1 for i, p in enumerate(parsed) if p is None]
 
+    if any(has_function_notation(s) for s in steps):
+        # 함수 표기는 P1 범위 밖이고, parse_line 이 f(x) 를 f*x 로 오독한다.
+        # 판정을 보류해 정답/오답을 단정하지 않는다 (ADR-03).
+        return Verdict(
+            steps=steps,
+            parsed=parsed,
+            valid=[None] * len(steps),
+            first_error_index=None,
+            unrecognized=unrecognized,
+            ref_step_no=[None] * len(steps),
+            review_reasons=[REVIEW_FUNCTION_NOTATION],
+        )
+
     budget = _SolveBudget()  # S2: 요청 1건당 solve() 호출 횟수 상한
 
     def _compare(i: int) -> tuple[bool | None, int | None]:
@@ -273,3 +355,124 @@ def verify(problem_latex: str, steps: list[str]) -> Verdict:
         unrecognized=unrecognized,
         ref_step_no=ref_step_no,
     )
+
+
+# ---------------------------------------------------------------------------
+# A6 P1 — 표현식 모드
+# ---------------------------------------------------------------------------
+
+REVIEW_EXPRESSION_EQ_LINE = "equation_line_in_expression_mode"
+REVIEW_EXPRESSION_PROBLEM_NOT_EXPR = "expression_problem_not_expression"
+REVIEW_FUNCTION_NOTATION = "function_notation_in_solution"
+
+
+def verify_expression(
+    problem_latex: str,
+    steps: list[str],
+    target_form: str | None = None,
+) -> Verdict:
+    """표현식(전개·인수분해·계산) 문제의 단계별 동치 + 형태 검사.
+
+    계약 §3.1:
+      1) 첫 줄은 문제식과 동치
+      2) 이후 줄은 직전 판정 가능 줄과 동치
+      3) target_form 이 있으면 마지막 판정 줄의 형태를 검사
+
+    안전장치(계약 §5 S2 / B3):
+      - 문제식이 등식이면(유형 오분류 가능) 판정하지 않고 REVIEW_REQUIRED
+      - 풀이 줄에 등식이 있으면 판정하지 않고 REVIEW_REQUIRED
+        (조용히 true/false 를 내면 오판이 저장된다)
+
+    판정 불가는 False 가 아니라 None 으로 남긴다(ADR-03).
+    """
+    if not steps:
+        return Verdict(steps=[], parsed=[], valid=[], first_error_index=None, unrecognized=[])
+
+    problem = parse_line(problem_latex)
+    raw = [parse_line(step) for step in steps]
+    unrecognized = [i + 1 for i, node in enumerate(raw) if node is None]
+
+    if any(has_function_notation(s) for s in steps):
+        # 함수 표기는 P1 범위 밖. f(2) 가 f*2 로 오독되므로 판정하지 않는다.
+        return Verdict(
+            steps=steps,
+            parsed=raw,
+            valid=[None] * len(steps),
+            first_error_index=None,
+            unrecognized=unrecognized,
+            ref_step_no=[None] * len(steps),
+            review_reasons=[REVIEW_FUNCTION_NOTATION],
+        )
+
+    if problem is None or problem[0] != "expr":
+        # 유형 선언(expression)과 실제 문제식이 어긋남 — 단정하지 않는다.
+        return Verdict(
+            steps=steps,
+            parsed=raw,
+            valid=[None] * len(steps),
+            first_error_index=None,
+            unrecognized=unrecognized,
+            ref_step_no=[None] * len(steps),
+            review_reasons=[REVIEW_EXPRESSION_PROBLEM_NOT_EXPR],
+        )
+
+    if any(node is not None and node[0] == "eq" for node in raw):
+        # 표현식 문제인데 학생이 등식으로 썼다 → 문제 유형 오분류 가능성.
+        return Verdict(
+            steps=steps,
+            parsed=raw,
+            valid=[None] * len(steps),
+            first_error_index=None,
+            unrecognized=unrecognized,
+            ref_step_no=[None] * len(steps),
+            review_reasons=[REVIEW_EXPRESSION_EQ_LINE],
+        )
+
+    parsed = [node if (node is not None and node[0] == "expr") else None for node in raw]
+
+    def _compare(i: int) -> tuple[bool | None, int | None]:
+        """(동치 판정, 대조 기준 줄 번호 1-based). 기준이 없으면 None(문제식)."""
+        if parsed[i] is None:
+            return None, None
+        j = i - 1
+        while j >= 0 and parsed[j] is None:
+            j -= 1  # 인식 실패 줄은 건너뛰고 이전 판정 가능 줄과 대조
+        if j >= 0:
+            return equivalent(parsed[j], parsed[i]), j + 1
+        return equivalent(problem, parsed[i]), None
+
+    comparisons = [_compare(i) for i in range(len(steps))]
+    valid = [v for v, _ in comparisons]
+    ref_step_no = [r for _, r in comparisons]
+    first_error = next((i for i, v in enumerate(valid) if v is False), None)
+
+    form_violation_index: int | None = None
+    if target_form is not None and first_error is None:
+        last_judged = max((i for i, node in enumerate(parsed) if node is not None), default=None)
+        if last_judged is not None and not form_matches(
+            parsed[last_judged][1], target_form
+        ):
+            # 동치는 모두 성립하지만 요구 형태를 충족하지 못했다.
+            form_violation_index = last_judged
+            first_error = last_judged
+
+    return Verdict(
+        steps=steps,
+        parsed=parsed,
+        valid=valid,
+        first_error_index=first_error,
+        unrecognized=unrecognized,
+        ref_step_no=ref_step_no,
+        form_violation_index=form_violation_index,
+    )
+
+
+__all__ = [
+    "REVIEW_EXPRESSION_EQ_LINE",
+    "REVIEW_EXPRESSION_PROBLEM_NOT_EXPR",
+    "REVIEW_FUNCTION_NOTATION",
+    "Verdict",
+    "equivalent",
+    "verify",
+    "verify_expression",
+]

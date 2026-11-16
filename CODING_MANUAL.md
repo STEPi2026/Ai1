@@ -2,7 +2,7 @@
 
 > **이 문서 하나만 읽고 개발을 이어가도 되도록 작성한 작업 지침서입니다.**
 > 대상 모델: DeepSeek v4.1 flash (이후 "어시스턴트"로 표기)
-> 최종 갱신: PHASE 9-1 설계 보고 직후 · pytest 940 passed 기준
+> 최종 갱신: PHASE 9-9C.9A 로컬 커버리지·preflight · pytest 1713 passed 기준
 
 ---
 
@@ -13,10 +13,10 @@
 | 프로젝트 경로 | `C:\Users\choi\Desktop\learning-intelligence` |
 | 정식 이름 | AI① Learning Intelligence (수학 풀이 분석 백엔드) |
 | 언어/프레임워크 | Python 3.12.10 · FastAPI 0.141 · Pydantic 2.13 · SymPy 1.14 |
-| 테스트 | **940 passed** (수집 940 = 실행 940) / 경고 1개(무해) / lint 경고 0 |
+| 테스트 | **1713 passed** (수집 1713 = 실행 1713) / 경고 1개(Starlette/httpx deprecation) / lint 경고 0 |
 | 데이터 | `data/*.json` 3개 — **frozen, 수정 금지** |
 | 문서 | `docs/AI1_명세서_대조표.md` 가 실행 중인 명세(§1~§12) |
-| 미완 결�� | PHASE 9-x (OCR 경계) + PHASE 8-9 (Concept 매핑, 공식 자료 대기) |
+| 미완 과제 | Google Vision raw OCR 품질 평가 + PHASE 8-9 (Concept 매핑, 공식 자료 대기) |
 
 ```powershell
 # 작업 디렉터리는 항상 프로젝트 루트
@@ -25,7 +25,7 @@ $py = "C:\Users\choi\Desktop\learning-intelligence\.venv\Scripts\python.exe"
 
 & $py -m pytest -q                                              # 전체 (약 70초)
 & $py -m pytest --collect-only -q                               # 수집 수 확인
-& $py -m pyflakes app tests                                     # lint (반드시 0)
+& $py -m pyflakes app tests eval                                # lint (반드시 0)
 & $py -X utf8 -c "from app.taxonomy import validate_all; print(validate_all())"   # [] 여야 정상
 ```
 
@@ -112,7 +112,7 @@ problem_latex + solution_text
 
 ```
 app/
-  main.py            FastAPI 엔드포인트 7개 + 헬퍼. 오류→HTTP 매핑의 유일한 장소
+  main.py            FastAPI 엔드포인트 8개 + 헬퍼. 오류→HTTP 매핑의 유일한 장소
   schemas.py         Pydantic 요청/응답 모델 (전부 extra="forbid")
   taxonomy.py        frozen JSON 로더 + 검증 헬퍼. 파일을 직접 수정하지 않음
   pipeline/
@@ -124,7 +124,7 @@ app/
                      KnowledgeObservation/AttemptAnalysis + analyze_attempt()
     analyzer.py      analyze() + AnalysisError + _ERROR_STATUS 관련 상수
     repository.py    LearningRepository ABC + InMemoryLearningRepository
-tests/               34개 파일, 940건
+tests/               47개 파일, 1713건
 docs/
   STEPi_기능명세서_원본.md   원본 명세 (읽기 전용)
   AI1_명세서_대조표.md        실행 중 대조표 §1~§12 ← 반드시 함께 갱신
@@ -279,7 +279,7 @@ data/                frozen taxonomy 3종
 | # | 사고 | 규칙 |
 |---|---|---|
 | 1 | **edit 앵커가 잘못된 클래스에 적용** — `AnalysisSummaryItem` 과 `AnalyzeAttemptResponse` 의 헤더 5줄이 동일해서 필드가 엉뚱한 클래스에 들어감 | edit 전 대상 파일을 **Read 로 확인**하고, 유일한 문자열(`analysis_count` 등)을 앵커에 포함 |
-| 2 | **모듈 상수 이름 충돌** — `_HISTORY_ORDER` 를 attempt 목록과 학생 이력이 공유해 한쪽 값이 다른 쪽을 덮어씀 | 상수 이름을用途별로 분리하고, grep 으로 사용처 확인 |
+| 2 | **모듈 상수 이름 충돌** — `_HISTORY_ORDER` 를 attempt 목록과 학생 이력이 공유해 한쪽 값이 다른 쪽을 덮어씀 | 상수 이름을용도별로 분리하고, grep 으로 사용처 확인 |
 | 3 | **테스트 삭제 사고** — 앵커 줄을 되돌려 쓰지 않아 `def test_...` 줄이 사라지고 본문만 고아 코드로 남음 | 새 블록을 삽입할 때 **앵커 줄을 newString 끝에 반드시 재포함** |
 | 4 | Pydantic 모델에 **위치 인자** 전달 | `Model(field=...)` 키워드만 사용 |
 | 5 | `Problem("P1","2x=6",[...])` → `TypeError` | 위와 동일 |
@@ -288,7 +288,7 @@ data/                frozen taxonomy 3종
 | 8 | 같은 `solution_id` 를 서로 다른 problem 에 등록 | `solution_id` 는 **하나의 problem 에 귀속**. 문제마다 다른 ID 사용 |
 | 9 | attempt 본문 비교에 메타데이터를 넣어 버그 | 409 판정은 `problem_id`·`student_id`·`solution_text` **3개만** |
 | 10 | `datetime.fromisoformat` 는 Python 3.11+ 에서만 `Z` 를 수용 | 3.12 환경임을 기억 |
-| 11 | 해결되지 않은 오염: `app/schemas.py` 에 `首次`(중국어) 잔존 | 비ASCII 문자를 넣을 때 주의 |
+| 11 | 해결되지 않은 오염: `app/schemas.py` 에 `첫 부장`(중국어) 잔존 | 비ASCII 문자를 넣을 때 주의 |
 
 **디버그 프로브 스크립트 주의**: 이 프로젝트에서 "실패" 다수가 프로브 스크립트 자체의 오타/기대값 오류였습니다(집합 비교 `len(x)=={1}`, `solution_id` 불일치, `analysis_id` 하드코딩 등). 프로브 실패 시 **먼저 프로브를 의심**하세요. `analysis_id` 는 `{attempt_id}#{저장소 전역 seq}` 이고 **attempt별 시퀀스가 아닙니다.**
 
@@ -342,9 +342,8 @@ taxonomy validation, pyflakes를 실행하고 실제 수치를 포함해 보고�
 | 우선 | Phase | 내용 | 선행 조건 |
 |---|---|---|---|
 | 1 | 8-9 후속 | Skill↔Concept 매핑 데이터·검증·영속화 경계 | **공식 `concepts` 시드** |
-| 2 | 9-1 단계 1 | `ocr_result_id` 선택 필드 + 최소 1개 필수 검증 (OCR 없이) | OCR 경계 결정(§6-4,5) |
-| 3 | 9-1 단계 2~3 | `OcrResult` 스키마 + 검증기 + 가짜 구현 | `python-multipart` 승인 |
-| 4 | 9-1 단계 4~5 | `POST .../ocr` + 실제 OCR 연동 + 평가셋 | OCR 벤더/키/평가셋 |
+| 2 | 9-9C.4 후속 | Google Vision raw-text의 한국어·수식 인식 품질 실측 및 Backend 응답 계약 확인 | free quota 확인·별도 사용자 승인 |
+| 3 | 9-9C.4 후속 | Backend 이미지 MIME/용량/해상도·presigned URL 계약 확인 | Backend 합의 |
 | 5 | 후순위 | 오개념 해결 상태(`resolved_at`), 커서 페이징, 학생 검색, `analysis_id` URL-safe, 저장소 상한·TTL, MySQL, 인증·권한 | 각각 별도 결정 |
 
 ---
@@ -352,10 +351,11 @@ taxonomy validation, pyflakes를 실행하고 실제 수치를 포함해 보고�
 ## 12. 빠른 참조 카드
 
 ```
-엔드포인트 7개
+엔드포인트 8개
   GET  /health
   POST /analyze-solution                              (16 필드)
   POST /api/v1/attempts/{attempt_id}/analyze          (26 필드, 멱등)
+  POST /api/v1/attempts/{attempt_id}/ocr              (Google Vision raw-text, opt-in)
   GET  /api/v1/attempts/{attempt_id}/analyses
   GET  /api/v1/attempts/{attempt_id}/analyses/{analysis_id}   (# → %23 인코딩)
   GET  /api/v1/students/{student_id}/history?page&page_size&from&to
@@ -366,7 +366,7 @@ taxonomy validation, pyflakes를 실행하고 실제 수치를 포함해 보고�
   page ≥ 1, page_size 1~100, limit 1~20   → 422
 
 검증 6종
-  pytest -q · --collect-only -q · pyflakes(app tests) · validate_all() → []
+  pytest -q · --collect-only -q · pyflakes(app tests eval) · validate_all() → []
   golden regression · multi-error/alignment
 
 금지

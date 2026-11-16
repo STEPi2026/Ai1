@@ -1,4 +1,4 @@
-"""PHASE 8-11: 학생 이력 / 오개념 TOP 기간 필터 (from, to).
+﻿"""PHASE 8-11: 학생 이력 / 오개념 TOP 기간 필터 (from, to).
 
 계약
   - from / to 는 timezone offset 이 포함된 ISO 8601 datetime (선택)
@@ -26,6 +26,9 @@ HISTORY_URL = "/api/v1/students/{}/history"
 TOP_URL = "/api/v1/students/{}/misconceptions/top"
 
 M21 = "2(x-3)=6\n2x-3=6\n2x=13\nx=6.5"
+# PHASE 9-5: 이항 계열 중 '부호 미변경(3.1)' 만 단독으로 만드는 픽스처.
+#   이전의 "2x-3=3\n2x=3" 은 3.1(부호) + 3.2(항 누락) 을 함께 만들어
+#   오개념 집계 픽스처로 부적합하다. 여기서는 3.1 하나만 만든다.
 M31 = "2(x-3)=6\n2x-3=3\n2x-3=3\n2x-3=3"
 CALC = "2(x-3)=6\n2x-6=7\n2x=13\nx=6.5"
 OK = "2(x-3)=6\n2x-6=6\n2x=12\nx=6"
@@ -348,7 +351,7 @@ def test_top_only_counts_attempts_in_range():
     for name in ("G1", "G2", "G3"):
         post(name, M21)
     for name in ("H1", "H2"):
-        post(name, "2(x-3)=6\n2x-3=3\n2x=3")
+        post(name, M31)
     # H* 는 3.1, G* 는 2.1
     assert [(i["misconception_id"], i["attempt_count"]) for i in top().json()["items"]] == [
         ("2.1", 3), ("3.1", 2)
@@ -362,7 +365,7 @@ def test_top_only_counts_attempts_in_range():
 def test_top_distinct_count_within_window():
     for name in ("I1", "I2", "I3"):
         post(name, M21)
-    post("I4", "2(x-3)=6\n2x-3=3\n2x=3")
+    post("I4", M31)
     whole = top().json()
     windowed = top(**{"from": stamp("I1").isoformat()}).json()
     assert whole["distinct_misconception_count"] == 2
@@ -376,7 +379,7 @@ def test_top_rank_respects_window_counts():
     for name in ("J1", "J2", "J3", "J4"):
         post(name, M21)
     for name in ("K1", "K2"):
-        post(name, "2(x-3)=6\n2x-3=3\n2x=3")
+        post(name, M31)
     # from=J4 → J4 + K1 + K2 만 남음 (2.1:1건, 3.1:2건) → 3.1 이 1위
     body = top(**{"from": stamp("J4").isoformat()}).json()
     assert [(i["misconception_id"], i["attempt_count"], i["rank"]) for i in body["items"]] == [
@@ -461,7 +464,7 @@ def test_idempotent_replay_does_not_duplicate_period_results():
 
 def test_latest_analysis_rule_holds_inside_window():
     post("P1", M21)
-    add_analysis("P1", "2(x-3)=6\n2x-3=3\n2x=3")
+    add_analysis("P1", M31)
     start = stamp("P1").isoformat()
     assert [i["misconception_id"] for i in top(**{"from": start}).json()["items"]] == ["3.1"]
     assert history(**{"from": start}).json()["items"][0]["analysis_count"] == 2
@@ -526,7 +529,7 @@ def test_unfiltered_history_unchanged():
 def test_unfiltered_top_unchanged():
     post("T1", M21)
     post("T2", M21)
-    post("T3", "2(x-3)=6\n2x-3=3\n2x=3")
+    post("T3", M31)
     body = top().json()
     assert set(body) == {
         "student_id", "limit", "order", "distinct_misconception_count", "items"
@@ -556,7 +559,10 @@ def test_attempt_and_detail_apis_have_no_time_filter():
 
 
 def test_post_contracts_unchanged():
-    assert len(post("W1", M21).json()) == 26
+    # PHASE 9-7 additive: 기존 26 + Backend 코드 5 = 31 (상세는 +raw_result 로 32)
+    posted = post("W1", M21).json()
+    assert len(posted) == 31
+    assert posted["official_misconception_codes"] == ["MIS-1-004"]
     assert len(client.post(
         "/analyze-solution",
         json={"problem_latex": "2(x-3)=6", "solution_text": "2(x-3)=6\n2x-3=6"},
@@ -565,7 +571,8 @@ def test_post_contracts_unchanged():
         "/api/v1/attempts/W1/analyses/"
         + post("W1", M21).json()["analysis_id"].replace("#", "%23")
     ).json()
-    assert len(detail) == 27
+    assert len(detail) == 32
+    assert detail["official_misconception_codes"] == ["MIS-1-004"]
     assert detail["attempted_at"] == post("W1", M21).json()["attempted_at"]
 
 

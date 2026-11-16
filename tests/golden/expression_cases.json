@@ -1,0 +1,224 @@
+{
+  "description": "A6 P1 표현식 모드 회귀 기준. 각 케이스는 analyze() 직접 호출로 검증한다.",
+  "problem_skill": "distribution",
+  "cases": [
+    {
+      "id": "EX01-expanded-ok",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "expression",
+      "target_form": "expanded",
+      "solution_text": "(x+1)(x+2)\nx^2+3x+2",
+      "expected": {
+        "correct": true,
+        "analysis_status": "ANALYZED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX02-factored-ok",
+      "problem_latex": "x^2+5x+6",
+      "problem_type": "expression",
+      "target_form": "factored",
+      "solution_text": "x^2+5x+6\n(x+2)(x+3)",
+      "expected": {
+        "correct": true,
+        "analysis_status": "ANALYZED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX03-integer-ok",
+      "problem_latex": "(2+3)*4",
+      "problem_type": "expression",
+      "target_form": "integer",
+      "solution_text": "(2+3)*4\n20",
+      "expected": {
+        "correct": true,
+        "analysis_status": "ANALYZED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX04-no-target-form-ok",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "expression",
+      "target_form": null,
+      "solution_text": "(x+1)(x+2)\n(x+1)(x+2)\nx^2+3x+2",
+      "expected": {
+        "correct": true,
+        "analysis_status": "ANALYZED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX05-equiv-error",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "expression",
+      "target_form": "expanded",
+      "solution_text": "(x+1)(x+2)\nx^2+3x+3",
+      "expected": {
+        "correct": false,
+        "analysis_status": "ANALYZED",
+        "error_step": 2,
+        "error_type": "calculation",
+        "error_subtype": "arithmetic_slip"
+      }
+    },
+    {
+      "id": "EX06-expanded-form-violation",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "expression",
+      "target_form": "expanded",
+      "solution_text": "(x+1)(x+2)\nx^2+3x+2\n(x+1)(x+2)",
+      "expected": {
+        "correct": false,
+        "analysis_status": "ANALYZED",
+        "error_step": 3,
+        "error_type": "procedure",
+        "error_subtype": "method_mismatch"
+      }
+    },
+    {
+      "id": "EX07-factored-form-violation",
+      "problem_latex": "x^2+5x+6",
+      "problem_type": "expression",
+      "target_form": "factored",
+      "solution_text": "x^2+5x+6\nx^2+5x+6",
+      "expected": {
+        "correct": false,
+        "analysis_status": "ANALYZED",
+        "error_step": 2,
+        "error_type": "procedure",
+        "error_subtype": "method_mismatch"
+      }
+    },
+    {
+      "id": "EX08-eq-line-review",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "expression",
+      "target_form": "expanded",
+      "solution_text": "(x+1)(x+2)\nx^2+3x+2\nx^2+3x+2=0",
+      "expected": {
+        "correct": null,
+        "analysis_status": "REVIEW_REQUIRED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX09-problem-is-equation-review",
+      "problem_latex": "(x+1)(x+2)=x^2+3x+2",
+      "problem_type": "expression",
+      "target_form": null,
+      "solution_text": "(x+1)(x+2)",
+      "expected": {
+        "correct": null,
+        "analysis_status": "REVIEW_REQUIRED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX10-unrecognized-line-review",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "expression",
+      "target_form": "expanded",
+      "solution_text": "(x+1)(x+2)\n???\nx^2+3x+2",
+      "expected": {
+        "correct": true,
+        "analysis_status": "REVIEW_REQUIRED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX11-left-right-no-false-inequality",
+      "problem_latex": "\\left(x+1\\right)\\left(x+2\\right)",
+      "problem_type": "expression",
+      "target_form": "expanded",
+      "solution_text": "(x+1)(x+2)\nx^2+3x+2",
+      "expected": {
+        "correct": true,
+        "analysis_status": "ANALYZED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    },
+    {
+      "id": "EX12-single-step-correct",
+      "problem_latex": "(x+1)^2",
+      "problem_type": "expression",
+      "target_form": "expanded",
+      "solution_text": "x^2+2x+1",
+      "expected": {
+        "correct": true,
+        "analysis_status": "ANALYZED",
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null
+      }
+    }
+  ],
+  "rejected_cases": [
+    {
+      "id": "RJ01-inequality-symbol",
+      "problem_latex": "x^2-3x+2<0",
+      "problem_type": "expression",
+      "target_form": null,
+      "solution_text": "x<1",
+      "expected_code": "E_UNSUPPORTED_INEQUALITY"
+    },
+    {
+      "id": "RJ02-inequality-command",
+      "problem_latex": "2x \\le 4",
+      "problem_type": "equation",
+      "target_form": null,
+      "solution_text": "x \\le 2",
+      "expected_code": "E_UNSUPPORTED_INEQUALITY"
+    },
+    {
+      "id": "RJ03-equation-with-target-form",
+      "problem_latex": "2(x-3)=6",
+      "problem_type": "equation",
+      "target_form": "expanded",
+      "solution_text": "x=6",
+      "expected_code": "E_INVALID_TARGET_FORM"
+    },
+    {
+      "id": "RJ04-unknown-target-form",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "expression",
+      "target_form": "simplified",
+      "solution_text": "x^2+3x+2",
+      "expected_code": "E_INVALID_TARGET_FORM"
+    },
+    {
+      "id": "RJ05-unknown-problem-type",
+      "problem_latex": "(x+1)(x+2)",
+      "problem_type": "function",
+      "target_form": null,
+      "solution_text": "x^2+3x+2",
+      "expected_code": "E_INVALID_PROBLEM_TYPE"
+    },
+    {
+      "id": "RJ06-function-notation",
+      "problem_latex": "f(x)=2x+1",
+      "problem_type": "equation",
+      "target_form": null,
+      "solution_text": "f(x)=2x+1",
+      "expected_code": "E_UNSUPPORTED_FUNCTION"
+    }
+  ]
+}
