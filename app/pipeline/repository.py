@@ -110,6 +110,14 @@ class LearningRepository(ABC):
     @abstractmethod
     def release_analysis(self, attempt_id: str) -> None: ...
 
+    # --- 리소스 ID 단위 락 (PHASE 9-7.3) ---
+    # 같은 problem_id / solution_id 로 동시에 들어온 요청이 서로 다른 후보
+    # 레코드를 분석·저장하지 않게 한다. 항상 같은 순서로 획득해야 교착이 없다.
+    @abstractmethod
+    def claim_resource(self, kind: str, resource_id: str) -> None: ...
+    @abstractmethod
+    def release_resource(self, kind: str, resource_id: str) -> None: ...
+
     @abstractmethod
     def reset(self) -> None: ...
 
@@ -125,6 +133,7 @@ class InMemoryLearningRepository(LearningRepository):
         self._analyses: dict[str, AnalysisRecord] = {}
         self._analysis_ids: dict[str, list[str]] = {}  # attempt_id -> [analysis_id]
         self._analysis_gates: dict[str, threading.Lock] = {}  # attempt_id 단위 분석 락
+        self._resource_gates: dict[str, threading.Lock] = {}  # 리소스 ID 단위 락
         self._seq = 0
 
     # ------------------------------------------------------------------
@@ -327,6 +336,35 @@ class InMemoryLearningRepository(LearningRepository):
                 self._analysis_gates[attempt_id] = gate
             return gate
 
+    # ------------------------------------------------------------------
+    # 리소스 ID 단위 락 (PHASE 9-7.3)
+    # ------------------------------------------------------------------
+
+    def claim_resource(self, kind: str, resource_id: str) -> None:
+        """리소스 ID 단위 구간을 원자적으로 확보한다 (블로킹).
+
+        같은 ``problem_id`` / ``solution_id`` 를 쓰는 동시 요청이 서로 다른 후보
+        레코드를 분석·저장하는 것을 막는다. 저장소 밖에서 직접 등록하는 경로가
+        우회하더라도, lock 안에서는 source of truth 를 먼저 읽게 된다.
+
+        반드시 :meth:`release_resource` 로 해제해야 한다(try/finally).
+        """
+        gate = self._resource_gate(kind, resource_id)
+        gate.acquire()
+
+    def release_resource(self, kind: str, resource_id: str) -> None:
+        """claim_resource() 으로 확보한 구간을 해제한다."""
+        self._resource_gate(kind, resource_id).release()
+
+    def _resource_gate(self, kind: str, resource_id: str) -> threading.Lock:
+        key = f"{kind}:{resource_id}"
+        with self._lock:
+            gate = self._resource_gates.get(key)
+            if gate is None:
+                gate = threading.Lock()
+                self._resource_gates[key] = gate
+            return gate
+
     def reset(self) -> None:
         """테스트 격리용. MySQL 구현에서는 truncate/롤백에 대응한다."""
         with self._lock:
@@ -336,6 +374,7 @@ class InMemoryLearningRepository(LearningRepository):
             self._analyses.clear()
             self._analysis_ids.clear()
             self._analysis_gates.clear()
+            self._resource_gates.clear()
             self._seq = 0
 
 

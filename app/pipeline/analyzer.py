@@ -10,7 +10,9 @@ from app.taxonomy import (
     validate_tracking_skill,
 )
 
-from .classifier import classify
+from .classifier import classify, form_violation_info
+from .forms import ALLOWED_TARGET_FORMS
+from .inequality import has_inequality_operator
 from .knowledge import (
     BKTEngine,
     InvalidStudentIdError,
@@ -18,8 +20,9 @@ from .knowledge import (
     SKILL_LINEAR,
     validate_student_id,
 )
+from .notation import has_function_notation
 from .parser import parse_line, split_steps
-from .verifier import verify
+from .verifier import verify, verify_expression
 
 
 class AnalysisError(ValueError):
@@ -53,6 +56,53 @@ class UntrackableSkillError(AnalysisError):
         super().__init__(
             "E_SKILL_NOT_TRACKABLE",
             f"Knowledge State 추적 대상이 아닌 skill입니다 (bkt_eligible=false): '{skill_id}'",
+        )
+
+
+class UnsupportedInequalityError(AnalysisError):
+    """부등식 — A6 P1 범위 밖. 분석하지 않고 저장도 하지 않는다."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "E_UNSUPPORTED_INEQUALITY",
+            "부등식은 아직 지원하지 않습니다 (P1 범위 밖).",
+        )
+
+
+class UnsupportedFunctionError(AnalysisError):
+    """함수 표기 — A6 P1 범위 밖(B4 확정). 분석하지 않고 저장도 하지 않는다.
+
+    ``parse_line`` 이 ``f(x)`` 를 ``f*x`` 로 오독하므로, 탐지하지 않으면
+    함수 문제를 방정식으로 판정해 ``correct=true`` 를 낼 수 있다.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            "E_UNSUPPORTED_FUNCTION",
+            "함수 표기(f(x) 등)는 아직 지원하지 않습니다 (P1 범위 밖).",
+        )
+
+
+class InvalidTargetFormError(AnalysisError):
+    """target_form 계약 위반 — 재시도해도 결과가 같은 설정/계약 오류."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__("E_INVALID_TARGET_FORM", message)
+
+
+def _short(value: object, limit: int = 40) -> str:
+    """에러 메시지에 넣을 값을 잘라 낸다(로그·응답 비대 방지)."""
+    text = str(value)
+    return text if len(text) <= limit else text[:limit] + "…"
+
+
+class InvalidProblemTypeError(AnalysisError):
+    """problem_type 계약 위반."""
+
+    def __init__(self, problem_type: str) -> None:
+        super().__init__(
+            "E_INVALID_PROBLEM_TYPE",
+            f"알 수 없는 problem_type 입니다: '{_short(problem_type)}' (equation | expression)",
         )
 
 
@@ -105,11 +155,74 @@ def analysis_status_of(verdict) -> AnalysisStatus:
     UNKNOWN 은 여기서 나오지 않는다 — 신뢰 가능한 단계 판정이 하나도 없으면
     위에서 E_UNRECOGNIZED / E_UNVERIFIABLE 로 거절된다.
     """
+    if verdict.review_reasons:
+        # A6 P1: 유형 오분류 가능성 등으로 판정 자체를 보류한 경우.
+        return "REVIEW_REQUIRED"
     if verdict.unrecognized:
         return "REVIEW_REQUIRED"
     if any(v is None for v in verdict.valid):
         return "REVIEW_REQUIRED"
     return "ANALYZED"
+
+
+def validate_problem_mode(problem_type: str, target_form: str | None) -> None:
+    """A6 P1 — problem_type/target_form 조합 검증 (계약 §2.1).
+
+    - equation + target_form 값 → 계약 위반(등식에 형태 요구는 모순)
+    - 허용되지 않은 target_form 값 → 계약 위반
+    """
+    if problem_type not in ("equation", "expression"):
+        raise InvalidProblemTypeError(problem_type)
+    if target_form is None:
+        return
+    if target_form not in ALLOWED_TARGET_FORMS:
+        raise InvalidTargetFormError(
+            f"허용되지 않은 target_form 입니다: '{_short(target_form)}' "
+            f"(허용: {', '.join(sorted(ALLOWED_TARGET_FORMS))})"
+        )
+    if problem_type == "equation":
+        raise InvalidTargetFormError(
+            "problem_type='equation' 에는 target_form 을 보낼 수 없습니다. "
+            "등식에는 결과 형태 요구가 없습니다."
+        )
+
+
+def _validated_keys(problem_skill: str, student_id: str) -> tuple[str, str]:
+    """Knowledge State 키 검증 (S4/S5). 실패 시 계약 오류로 변환한다."""
+    try:
+        problem_skill = validate_tracking_skill(problem_skill)
+    except SkillNotFoundError:
+        raise UnknownSkillError(problem_skill) from None
+    except SkillNotTrackableError:
+        raise UntrackableSkillError(problem_skill) from None
+    try:
+        student_id = validate_student_id(student_id)
+    except InvalidStudentIdError as exc:
+        raise InvalidStudentIdAnalysisError(str(exc)) from None
+    return problem_skill, student_id
+
+
+def _review_payload(problem_skill: str, kb, student_id: str, verdict) -> dict:
+    """판정 보류(REVIEW_REQUIRED) 응답. Knowledge State 는 갱신하지 않는다."""
+    return {
+        "correct": None,
+        "error_step": None,
+        "error_type": None,
+        "skill": problem_skill,
+        # 갱신 없이 현재 값만 읽는다 (기본값일 수 있음).
+        "state": kb.state(student_id, problem_skill),
+        "mastery": kb.mastery(student_id, problem_skill),
+        "misconception_id": None,
+        "confidence": None,
+        "steps_latex": verdict.steps,
+        "valid": verdict.valid,
+        "unrecognized": verdict.unrecognized,
+        "analysis_status": "REVIEW_REQUIRED",
+        "skills": [problem_skill],
+        "skill_ids": [problem_skill],
+        "error_subtype": None,
+        "misconception_ids": [],
+    }
 
 
 def analyze(
@@ -119,6 +232,8 @@ def analyze(
     engine: str = "rule",
     problem_skill: str = SKILL_LINEAR,
     segmenter: Callable[[str], list[str]] | None = None,
+    problem_type: str = "equation",
+    target_form: str | None = None,
 ) -> dict:
     """풀이 분석 메인 엔트리.
 
@@ -127,6 +242,9 @@ def analyze(
     3) 오류 유형 분류 → 오개념 트리 매핑
     4) Knowledge State 갱신 (rule | bkt)
     5) 계약 JSON 반환
+
+    A6 P1: ``problem_type='expression'`` 이면 등식 대신 식 동치로 판정한다.
+    부등식은 범위 밖이므로 분석 전에 거절한다.
     """
     steps = (segmenter or split_steps)(solution_text)
     if not steps:
@@ -140,12 +258,42 @@ def analyze(
         raise AnalysisError(
             "E_INPUT_TOO_LARGE", f"풀이 단계가 너무 많습니다 (최대 {_MAX_STEPS}단계)."
         )
-    problem_node = parse_line(problem_latex)
-    if problem_node is None or problem_node[0] != "eq":
-        # 문제식(등식)을 못 읽으면 검증 자체가 불가 — 정답으로 단정하지 않는다
-        raise AnalysisError("E_BAD_PROBLEM", "문제식을 인식할 수 없습니다.")
 
-    verdict = verify(problem_latex, steps)
+    # A6 P1 — 부등식은 범위 밖. 유형 선언과 무관하게 분석하지 않는다.
+    if has_inequality_operator(problem_latex):
+        raise UnsupportedInequalityError()
+    # A6 P1 — 함수 표기는 범위 밖(B4). f(x) 가 f*x 로 오독되므로 먼저 거절한다.
+    if has_function_notation(problem_latex):
+        raise UnsupportedFunctionError()
+    validate_problem_mode(problem_type, target_form)
+
+    problem_node = parse_line(problem_latex)
+    if problem_node is None:
+        # 수식 자체를 해석하지 못함 — 학생이 고쳐서 재시도할 수 있다
+        raise AnalysisError("E_BAD_PROBLEM", "문제식을 인식할 수 없습니다.")
+    if problem_type == "equation" and problem_node[0] != "eq":
+        # 파싱은 됐지만 등식이 아님(예: 전개/계산 문제의 식). 재시도해도 결과가 같다
+        raise AnalysisError(
+            "E_NOT_EQUATION",
+            "문제식이 등식이 아닙니다. 등식 형태의 문제만 지원합니다.",
+        )
+
+    verdict = (
+        verify_expression(problem_latex, steps, target_form)
+        if problem_type == "expression"
+        else verify(problem_latex, steps)
+    )
+
+    if verdict.review_reasons:
+        # 유형 오분류 가능성 → 조용히 true/false 를 내지 않고 판정 보류.
+        if not any(p is not None for p in verdict.parsed):
+            raise AnalysisError(
+                "E_UNRECOGNIZED",
+                "모든 풀이 단계를 인식하지 못했습니다. 직접 입력으로 다시 시도해 주세요.",
+            )
+        problem_skill, student_id = _validated_keys(problem_skill, student_id)
+        return _review_payload(problem_skill, get_engine(engine), student_id, verdict)
+
     if not any(p is not None for p in verdict.parsed):
         raise AnalysisError(
             "E_UNRECOGNIZED",
@@ -158,23 +306,7 @@ def analyze(
             "풀이 단계를 대조 판정할 수 없습니다. 문제식과 풀이를 확인해 주세요.",
         )
 
-    # S4: problem_skill은 Knowledge State/BKT에 직접 연결되는 tracking skill이므로
-    # frozen taxonomy의 bkt_eligible 정의를 source of truth로 검증한다.
-    # 통과한 값만 kb.update()에 사용하므로 임의 문자열이 상태 키를 만들 수 없다.
-    try:
-        problem_skill = validate_tracking_skill(problem_skill)
-    except SkillNotFoundError:
-        raise UnknownSkillError(problem_skill) from None
-    except SkillNotTrackableError:
-        raise UntrackableSkillError(problem_skill) from None
-
-    # S5: student_id도 Knowledge State 키가 되므로 같은 정책 블록에서 검증한다.
-    # (엔진 update() 경로에도 동일 헬퍼 검증이 있어 직접 호출을 방어한다)
-    try:
-        student_id = validate_student_id(student_id)
-    except InvalidStudentIdError as exc:
-        raise InvalidStudentIdAnalysisError(str(exc)) from None
-
+    problem_skill, student_id = _validated_keys(problem_skill, student_id)
     kb = get_engine(engine)
 
     if verdict.first_error_index is None:
@@ -204,7 +336,11 @@ def analyze(
             "misconception_ids": [],
         }
 
-    info = classify(problem_latex, steps, verdict.first_error_index)
+    if verdict.form_violation_index is not None:
+        # A6 P1 — 동치는 성립하지만 마지막 줄이 요구 형태가 아니다.
+        info = form_violation_info(problem_skill)
+    else:
+        info = classify(problem_latex, steps, verdict.first_error_index)
     kb.update(student_id, info.skill, info.error_type)
     state = kb.state(student_id, info.skill)
     return {

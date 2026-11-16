@@ -108,7 +108,10 @@ def test_new_concept_error_in_run_is_recorded():
     r = run("C3", ["2(x-3)=10", "2x-3=10", "2x=13", "3(x+2)=18", "3x+3=18"], sol, problem)
     kinds = [(e.step_no, e.error_type) for e in r.errors]
     assert (2, "concept_error") in kinds
-    assert 5 not in [k[0] for k in kinds if k[1] == "concept_error"] or True
+    # 5단계는 정렬 기준으로 뒤쪽 오류이므로 concept_error 로 기록되지 않는다.
+    # (독립 오류는 2단계 하나뿐이고 4·5단계는 downstream 로 억제된다)
+    assert 5 not in [k[0] for k in kinds if k[1] == "concept_error"]
+    assert [k[0] for k in kinds if k[1] == "concept_error"] == [2]
     assert r.errors[0].misconception_ids == ["2.1"], "분배법칙 오개념 유지"
 
 

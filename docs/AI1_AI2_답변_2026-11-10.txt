@@ -1,0 +1,127 @@
+AI② 담당자님, AI① Learning Intelligence 데이터 현황 회신드립니다.
+
+먼저 결론부터 말씀드리면, AI①은 현재 "텍스트 등식 풀이 분석"은 바로 사용 가능하지만
+"문제집 사진 → 문제/풀이 분리 → LaTeX 변환 → 분석"까지의 이미지 E2E 경로는 아직
+완성되지 않았습니다. OCR은 Google Vision 원문 텍스트 미리보기 수준이고, 실제 이미지·
+라벨·벤더 실호출은 모두 0건입니다. 아래에 확보된 것과 없는 것을 구분해 정리했습니다.
+
+
+1. 지금 실제로 되는 것
+- 등식 형태의 문제식 + 학생 풀이 텍스트를 받아 최초 오류 단계, 오류 유형/서브타입,
+  Skill, Knowledge State, 오개념(근거 있을 때만)을 JSON으로 반환합니다.
+- 응답은 31개 필드이고, 기존 11개 필드는 하위호환이라 그대로 유지됩니다.
+- 오류 유형 4종, 서브타입 16종(active), Skill 31개(그중 BKT 추적 24개) 체계가 있습니다.
+- 회귀 검증: golden 100건 기준 correct/error_step/error_type/skill/state 각 1.000,
+  pytest 1717 passed (2026-11-10).
+
+2. 아직 안 되는 것 (오해 방지)
+- 문제/풀이 영역 분리, 인쇄/손글씨 판별, OCR LaTeX 변환: 미구현
+- 흐림·어두움·빈 이미지 전용 품질 코드: 미구현 (UNREADABLE + warnings로만 표현)
+- 오개념 detector는 19개 중 3개(2.1 / 3.1 / 3.2)만 연결
+- procedure 오류 타입은 정의만 있고 실제로는 emit되지 않음
+- 최종 정답 독립 검증 없음. correct=true는 "오류가 검출되지 않음"이라는 뜻입니다.
+
+3. 보유 데이터 수량
+[Backend Seed — 복사하지 않고 참조만]
+  Concept 42 / Skill 94 / 문제 94 / 선수관계 92 / Misconception 23
+
+[AI① 내부 taxonomy — data/*.json]
+  Skill 31(기본 26 + expansion 5, BKT 추적 24)
+  error_type 4 / error_subtype 17(active 16) / Misconception 19 / 예시 패턴 44
+
+[분석 회귀 fixture — 합성/텍스트]
+  golden 100(정답 44, 계산 28, 이항 12, 분배 11, 문제 오독 5)
+  golden 20(초기), OCR handoff 9, OCR 라벨 예시 2
+  ※ golden 100의 오개념 라벨은 0건입니다. 오개념은 회귀 검증되지 않는 상태입니다.
+
+[실제 OCR 자산]
+  이미지 0장 / 정답 전사문 0건 / OCR 라벨 0건 / 벤더 원본 응답 0건
+  Vision 실호출 0회 / Mathpix 실호출 0회
+
+즉 "100건 확보"는 분석 규칙 검증 100건이라는 의미이고, 실제 문제 이미지 데이터가
+100건 있다는 뜻이 아닙니다.
+
+4. 추가로 필요한 데이터 (P0)
+(1) 실제 OCR 평가셋: 최소 20장, 권장 40장
+    - 고등학교 수학(공통수학1) 중심, 1문제 1장, 학생 3인 이상 손글씨
+    - E01~E16 케이스(기울어짐/흐림/역광/분수·제곱근/빈 페이지/2문제 1장/2단 등)
+    - 이미지별 정답 문제 LaTeX, 문제 bbox, 줄별 인쇄·손글씨, 정답 풀이 단계 LaTeX,
+      단계 경계/순서, unreadable 단계, expected_error
+    - 성공/실패/불확실 각 최소 5건, 벤더 원본 응답 JSON은 로컬 보관
+(2) OCR provider 결정 + 예산 + 개인정보 확인 (Google Vision 유지 vs Mathpix)
+(3) 공식 코드 승인: Skill 우선 9건 + 범위 확인 4건, Misconception 후보 3건
+    - 현재 승인된 매핑은 distribution → SKL-1-004, 2.1 → MIS-1-004 두 건뿐입니다.
+    - 승인 전에는 official_*가 빈 배열인 것이 정상입니다.
+(4) problem_code ↔ problem_id 규칙 확정
+    - AI①은 problem_id를 불투명 문자열로만 보존합니다. 이름 유사성으로 합치지 않습니다.
+(5) 94개 문제의 정답·정답 풀이
+    - 문제당 최소 1개, 대표 문제는 대안 풀이 1~2개
+    - 각 풀이: solution_id, steps[], answer_latex, is_primary
+    - problems.answer / answer_latex의 source of truth는 Backend로 통일 부탁드립니다.
+
+5. OCR 평가 데이터와 서비스 DB 분리 원칙
+- 서비스 데이터(문제·정답 풀이·Attempt·분석 결과·학생 상태)는 Backend MySQL이 소유합니다.
+  AI①은 DB가 없고, 요청을 받아 결과 JSON만 반환합니다(in-memory, 재시작 시 소멸).
+- OCR 이미지·라벨·벤더 원본 응답·평가 리포트는 서비스 DB에 넣지 않고 eval 전용
+  저장소(로컬 또는 별도 오브젝트 스토리지)에 둡니다.
+- 서비스 DB에는 필요 시 dataset_id, version, image_hash, label_hash, storage_uri 정도의
+  메타데이터만 두는 것을 제안합니다(별도 eval 스키마).
+- 학생 PII는 평가 저장소에도 저장하지 않습니다.
+
+6. Backend 전달 형식 (요약)
+[분석 요청] POST /api/v1/attempts/{attempt_id}/analyze
+  problem_id, problem_latex, problem_skills[], student_id, solution_text,
+  correct_solution{solution_id, steps[], answer_latex, is_primary}(선택), engine
+  - problem_latex는 현재 등식만 지원합니다. 등식이 아니면 422 E_NOT_EQUATION.
+  - tracking Skill 최소 1개 필요. 모르는 SKL 코드는 기본 Skill로 치환하지 않고 422.
+[분석 응답] 31개 필드
+  analysis_status(ANALYZED/REVIEW_REQUIRED, UNKNOWN은 422 detail로만)
+  first_error_step_index(1-based), error_type/error_subtype, skill, states,
+  mastery_by_skill, errors[](step_no, skill_ids, misconception_ids, evidence_latex,
+  description_ko, confidence), step_list[], misconception_tags[],
+  official_skill_codes[], official_misconception_codes[]
+[OCR 요청] POST /api/v1/attempts/{attempt_id}/ocr
+  image_reference(presigned URL), page_index
+  - HTTPS, JPEG/PNG, 10MB 이하, 1장. multipart 업로드는 사용하지 않습니다.
+  - 응답은 raw_text 모드이며 problem/regions/solution_steps는 비어 있습니다.
+
+7. AI②가 결과를 쓸 때 주의할 점
+사용 가능: analysis_status, first_error_step_index, error_type/error_subtype, skill,
+  errors[] 상세, step_list[], misconception_tags, official_* 코드, states/mastery_by_skill
+사용 금지:
+  - AI①의 mastery/state를 최종 Student State로 사용
+  - 내부 MIS ID(2.1, 3.1 등)를 Backend FK로 직접 사용
+  - official_*가 빈 배열인 것을 "오류 없음"으로 해석
+  - correct=true를 "완전한 정답 증명"으로 해석
+  - OCR confidence와 분석 confidence를 동일 값으로 사용
+아직 없는 값: overall_confidence 병합값, suppressed_downstream_steps,
+  concept_id/STP, 최종 정답 대조 결과, confidence calibration
+
+8. 결정 요청드리는 항목 (우선순위 순)
+1) problem_code ↔ problem_id 규칙 (PRB-* / CAPTURED-* 중 통일 키)
+2) Skill 코드 승인 (우선 9건 + 범위 확인 4건, 시드 밖 SKL-2-036~040 처리)
+3) Misconception 코드 승인 (2.2 → MIS-1-001, 2.3 → MIS-1-022 후보,
+   3.1/3.2는 Seed 대응 없음, 시드 밖 MIS-2-001/002 처리)
+4) 94개 문제 정답·정답 풀이 제공 및 source of truth 통일
+5) 분석 결과 저장 규칙 (raw_result 31필드 전체, first_error_step 1-based,
+   misconception_id FK는 승인 코드만)
+
+중간 우선순위로는 analysis_status 처리 규칙, 대표/복수 오류 정책,
+이미지 규격, 재촬영 attempt 연결, 멱등성(Backend unique 제약) 보완이 있습니다.
+
+9. 적재 순서 제안
+Step 0 ID 동결 → Step 1 Backend Seed 유지 → Step 2 매핑 테이블(승인/후보 분리)
+→ Step 3 문제·정답 풀이 → Step 4 이미지·Attempt → Step 5 분석 결과
+→ Step 6 평가 데이터는 별도 저장소
+
+AI① taxonomy ID와 Backend Seed 코드는 서로 이름을 맞추지 않고, 매핑 테이블로만
+연결하는 방향을 유지하겠습니다. 기존 Seed와 충돌하는 코드는 넣지 않습니다.
+
+전체 상세(필드 정의, 예시 JSON, E01~E16 목록, 체크리스트)는 별도 문서
+"AI1_데이터현황_AI2회신_2026-11-10.txt"에 정리해 두었습니다.
+
+위 8번 5개 항목만 확정되면, AI①은 텍스트 분석 경로부터 바로 연동 검증에 들어갈 수
+있습니다. OCR 평가는 실제 이미지 20장과 라벨이 준비되는 시점에 착수하겠습니다.
+
+감사합니다.
+AI① Learning Intelligence 담당

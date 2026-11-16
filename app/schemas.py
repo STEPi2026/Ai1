@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 EngineName = Literal["rule", "bkt"]
 
@@ -28,6 +28,22 @@ class AnalyzeSolutionRequest(BaseModel):
     )
     student_id: str = Field("anonymous", description="학생 식별자 (상태 저장 키)")
     engine: EngineName = Field("rule", description="knowledge state 엔진: rule(Stage0) | bkt(Stage1)")
+    problem_type: Literal["equation", "expression"] = Field(
+        "equation",
+        description=(
+            "A6 P1: 문제 유형. 생략하면 equation(기존 동작). expression 이면 "
+            "정답식 없이 줄↔직전 줄 동치로 판정한다. 부등식은 범위 밖이다."
+        ),
+    )
+    target_form: str | None = Field(
+        None,
+        max_length=32,
+        description=(
+            "A6 P1: expression 문제의 요구 결과 형태(integer|expanded|factored). "
+            "None 이면 동치만 검사한다. equation 과 함께 보내면 "
+            "422 E_INVALID_TARGET_FORM."
+        ),
+    )
     problem_skill: str = Field(
         "linear_equation",
         min_length=1,
@@ -75,14 +91,41 @@ class AnalyzeAttemptRequest(BaseModel):
     )
     problem_skills: list[str] = Field(
         default_factory=list,
-        description="문제의 개념적 Skill 목록 (group node 허용). 미등록 문제 등록 시 사용",
+        description=(
+            "문제의 개념적 Skill 목록 (group node 허용). 미등록 문제 등록 시 사용. "
+            "AI① 내부 frozen skill_id 를 쓰거나, Backend 공식 Skill 코드"
+            "(SKL-*) 를 보낸다 — 코드는 crosswalk(approved + provisional) 에 있는 "
+            "것만 역변환하고, 모르는 코드는 422 로 거절한다(기본 Skill 추측 금지)."
+        ),
     )
-    student_id: str = Field(..., description="학생 식별자")
+    student_id: str | int = Field(
+        ...,
+        description=(
+            "학생 식별자. AI① 내부는 문자열로 다루며, 정수를 보내면 십진 문자열로 "
+            "정규화한다(접두사 없음). 문자열은 선행 0 을 지우지 않고 그대로 보존한다."
+        ),
+    )
     solution_text: str = Field(..., description="학생 풀이 원문")
     correct_solution: CorrectSolutionInput | None = Field(
         None, description="정답 풀이 (미제공 시 단계 정렬 없이 분석)"
     )
     engine: EngineName = Field("rule", description="knowledge state 엔진")
+    problem_type: Literal["equation", "expression"] = Field(
+        "equation",
+        description=(
+            "A6 P1: 문제 유형. 생략하면 equation(기존 동작). expression 이면 "
+            "정답식 없이 줄↔직전 줄 동치로 판정한다. 부등식은 범위 밖이다."
+        ),
+    )
+    target_form: str | None = Field(
+        None,
+        max_length=32,
+        description=(
+            "A6 P1: expression 문제의 요구 결과 형태(integer|expanded|factored). "
+            "None 이면 동치만 검사한다. equation 과 함께 보내면 "
+            "422 E_INVALID_TARGET_FORM."
+        ),
+    )
     problem_question_text: str | None = Field(
         None,
         description=(
@@ -101,6 +144,20 @@ class AnalyzeAttemptRequest(BaseModel):
         None,
         description="표시용 단원명. 명세 대응 컬럼이 없는 표시 전용 값. 최초 등록 시만 반영.",
     )
+
+    @field_validator("student_id", mode="before")
+    @classmethod
+    def _reject_bool_student_id(cls, v):
+        """bool 은 정수 서브클래스라 `True` 가 학생 "1" 로 조용히 정규화된다.
+
+        정규화 전에 명시적으로 거절해 식별자 손실을 막는다.
+        """
+        if isinstance(v, bool):
+            raise ValueError(
+                "student_id 는 bool 을 받을 수 없습니다 (정수/문자열만 허용): "
+                f"{v!r}"
+            )
+        return v
 
 
 class StepView(BaseModel):
@@ -147,7 +204,13 @@ class AnalyzeAttemptResponse(BaseModel):
         ),
     )
     # --- 기존 결과 필드 (의미 변경 없음) ---
-    correct: bool
+    correct: bool | None = Field(
+        None,
+        description=(
+            "ANALYZED 이면 true/false. REVIEW_REQUIRED 이면 null(판정 보류). "
+            "correct=true 는 '오류 미검출'이며 완전한 정답 증명이 아니다."
+        ),
+    )
     error_step: int | None = Field(None, description="첫 오류 줄 번호 (1-based)")
     first_error_step_index: int | None = Field(
         None,
@@ -181,6 +244,38 @@ class AnalyzeAttemptResponse(BaseModel):
     mastery_by_skill: dict[str, float] = Field(
         default_factory=dict, description="관측된 skill_id → 숙련도"
     )
+    # --- Backend 전달용 additive 필드 (PHASE 9-7) ---
+    # 위 기존 필드(taxonomy ID)는 그대로 두고, Backend 코드만 따로 노출한다.
+    # taxonomy ID 를 Backend 코드로 덮어쓰지 않는다.
+    misconception_tag: str | None = Field(
+        None,
+        description=(
+            "앱 r48 호환 단수 필드. 대표 오류(가장 낮은 step_no)의 내부 "
+            "Misconception ID 이며, 없으면 null. 복수 misconception_tags 와 구분된다."
+        ),
+    )
+    official_skill_codes: list[str] = Field(
+        default_factory=list,
+        description="Backend 승인 Skill 코드 (SKL-1-004 등). 없으면 빈 배열",
+    )
+    official_misconception_codes: list[str] = Field(
+        default_factory=list,
+        description="Backend 승인 Misconception 코드 (MIS-1-004 등). 없으면 빈 배열",
+    )
+    provisional_skill_codes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "후보(미승인) Skill 코드 (SKL-2-037 등). Backend 승인분과 분리해 "
+            "노출한다. 없으면 빈 배열"
+        ),
+    )
+    provisional_misconception_codes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "후보(미승인) Misconception 코드 (MIS-2-001 등). Backend 승인분과 "
+            "분리해 노출한다. 없으면 빈 배열"
+        ),
+    )
 
 
 class AnalysisSummaryItem(BaseModel):
@@ -193,12 +288,27 @@ class AnalysisSummaryItem(BaseModel):
     problem_id: str
     student_id: str
     analysis_status: AnalysisStatus = Field(..., description="ANALYZED/REVIEW_REQUIRED/UNKNOWN")
-    correct: bool
+    correct: bool | None = Field(
+        None, description="ANALYZED 이면 true/false, REVIEW_REQUIRED 이면 null"
+    )
     error_type: str | None = None
     error_subtype: str | None = None
-    skill: str
+    skill: str = Field(
+        ...,
+        description=(
+            "이번 시도에서 관측된 대표 Skill. 정답이면 문제의 대표 추적 Skill, "
+            "오답이면 첫 오류가 귀속된 Skill 이다. 요청의 problem_skills(문제 선언 "
+            "Skill)와 다를 수 있다 — 선언과 관측을 같은 값으로 가정하지 않는다."
+        ),
+    )
     state: Literal["mastered", "learning", "needs_practice"]
-    mastery: float
+    mastery: float = Field(
+        ...,
+        description=(
+            "관측 Skill(위 skill 필드) 기준 BKT 값. 요청의 problem_skills 나 "
+            "공식 Skill 코드 매핑과 1:1 대응을 보장하지 않는다."
+        ),
+    )
     misconception_id: str | None = None
     first_error_step_index: int | None = Field(
         None, description="첫 오류 줄 번호 (1-based, 없으면 null)"
@@ -368,10 +478,11 @@ class MisconceptionTopResponse(BaseModel):
 class AnalyzeSolutionResponse(BaseModel):
     """AI① 최소 계약 + 확장 필드 (하위호환)."""
 
-    correct: bool = Field(
+    correct: bool | None = Field(
         ...,
         description=(
             "현재 입력된 풀이에서 오류가 검출되지 않았는지를 뜻한다. "
+            "REVIEW_REQUIRED(판정 보류)이면 null 이다. "
             "풀이 과정의 완전성이나 최종 정답의 독립적인 증명을 의미하지 않는다 — "
             "단계 생략(예: 정답만 제출)도 correct=true가 될 수 있으며, "
             "unrecognized 줄이 있으면 부분 검증에 해당한다."
@@ -435,3 +546,204 @@ class AnalyzeSolutionResponse(BaseModel):
             "채워지므로 단순 계산 오류는 빈 목록이다. 정답 시 빈 목록."
         ),
     )
+
+
+# ===========================================================================
+# OCR 경계 (PHASE 9-8A)
+#
+# 사진 원본 저장은 Backend 책임이다. AI① 은 Backend 가 준 `image_reference` 를
+# 입력으로 받기만 하고, 사진 bytes 를 직접 받지 않는다(업로드 경로 중복 구현 금지).
+#
+# **OCR confidence 와 AI¹ 수학 분석 confidence 는 서로 다른 값이다.**
+# 수학 분석 응답의 `confidence` 는 분류 신뢰도이고, OCR 응답의 `ocr_confidence` /
+# `confidence`(problem·region·step) 는 문자 인식 신뢰도다. 섞지 않는다.
+# ===========================================================================
+
+#: OCR 처리 상태. COMPLETE=전부 읽음, PARTIAL=일부만 읽음, UNREADABLE=읽을 수 없음.
+OcrStatus = Literal["COMPLETE", "PARTIAL", "UNREADABLE"]
+
+#: region 종류 — 인쇄(문제·조건) / 손글씨(풀이).
+OcrRegionKind = Literal["printed", "handwritten"]
+
+#: 읽을 수 없는 항목을 표시하는 표식. AI¹ 텍스트 파이프라인에서도 같은 표식을 쓴다.
+UNREADABLE_MARKER = "???"
+
+
+class OcrBBox(BaseModel):
+    """영역 좌표. provider 가 정한 좌표계(픽셀 또는 정규화)를 그대로 쓴다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    x: float = Field(..., ge=0, description="영역 왼쪽 좌표")
+    y: float = Field(..., ge=0, description="영역 위쪽 좌표")
+    width: float = Field(..., ge=0, description="영역 너비")
+    height: float = Field(..., ge=0, description="영역 높이")
+
+
+class OcrRawTextLine(BaseModel):
+    """Raw text OCR의 줄 미리보기 (문제/풀이 의미를 나누기 전)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    line_index: int = Field(..., ge=0, description="OCR 결과 내 0-based 파생 줄 인덱스")
+    page_index: int | None = Field(None, ge=0, description="Backend 요청의 페이지 인덱스")
+    text: str = Field(..., description="OCR이 인식한 텍스트; 문제/풀이 의미는 미분류")
+    confidence: float | None = Field(None, ge=0.0, le=1.0, description="OCR 신뢰도 (없으면 null)")
+    bbox: OcrBBox | None = Field(None, description="원본 이미지 좌표의 축 정렬 bounding box")
+    bounding_polygon: list[list[float]] = Field(
+        default_factory=list, description="단어 좌표를 합쳐 파생한 줄 bounding polygon [[x, y], ...]"
+    )
+    derived: bool = Field(True, description="Vision word geometry에서 파생한 줄 여부")
+
+
+class _OcrReadable(BaseModel):
+    """읽을 수 없는 항목의 내용 복원·LaTeX 조작을 막는 공통 규칙.
+
+    계약(문서 §14.17 과 동일)
+      - ``unreadable=True`` 면 ``text`` 는 **반드시** ``"???"`` 다.
+        ``None`` 이나 빈 문자열도 허용하지 않는다 — 표시 표식이 하나로 고정돼야
+        AI¹ 텍스트 파이프라인(``???`` → unrecognized 단계)으로 그대로 이어진다.
+      - ``unreadable=True`` 면 ``latex_text`` 는 **반드시** ``None`` 다.
+        읽을 수 없는 내용을 임의로 복원하거나 LaTeX 를 만들어내지 않는다.
+    """
+
+    text: str | None = Field(None, description="읽힌 원문 (표시용)")
+    latex_text: str | None = Field(None, description="검증용 LaTeX (없으면 null)")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="OCR 신뢰도 (0~1)")
+    unreadable: bool = Field(False, description="읽을 수 없으면 true")
+
+    @model_validator(mode="after")
+    def _no_restored_content(self):
+        if not self.unreadable:
+            return self
+        if self.latex_text is not None:
+            raise ValueError(
+                "읽을 수 없는 항목에 LaTeX 를 만들어낼 수 없습니다 (latex_text 는 null 이어야 한다)"
+            )
+        if self.text != UNREADABLE_MARKER:
+            raise ValueError(
+                f"읽을 수 없는 항목의 text 는 '{UNREADABLE_MARKER}' 이어야 합니다 "
+                f"(받은 값: {self.text!r})"
+            )
+        return self
+
+
+class _OcrContentRequired(_OcrReadable):
+    """내용이 반드시 있어야 하는 항목(problem / step).
+
+    읽을 수 있는(unreadable=false) 항목은 ``text`` 또는 ``latex_text`` 중 하나에
+    **비어 있지 않은 실제 내용**이 있어야 한다. 둘 다 없거나 공백뿐이면
+    provider 계약 위반이다 — 빈 문제를 '읽혔다'로 취급하면 안 된다.
+
+    (``OcrRegion`` 은 여기에 속하지 않는다. 영역은 bbox 만 있어도 유효하다 —
+    좌표만 있고 읽힌 텍스트가 없는 region 은 영역 메타데이터일 뿐이다.)
+    """
+
+    @model_validator(mode="after")
+    def _has_readable_content(self):
+        if self.unreadable:
+            return self
+        has_text = bool(self.text and self.text.strip())
+        has_latex = bool(self.latex_text and self.latex_text.strip())
+        if not has_text and not has_latex:
+            raise ValueError(
+                "읽을 수 있는 항목은 text 또는 latex_text 중 하나에 내용이 있어야 합니다 "
+                "(둘 다 비어 있으면 provider 계약 위반이다)"
+            )
+        return self
+
+
+class OcrRegion(_OcrReadable):
+    """인쇄/손글씨 영역 1개.
+
+    bbox 만 있어도 된다 — provider 가 영역 정보만 주는 경우도 허용한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: OcrRegionKind = Field(..., description="printed | handwritten")
+    bbox: OcrBBox = Field(..., description="영역 좌표")
+
+
+class OcrStep(_OcrContentRequired):
+    """풀이 단계 1개. 배열 순서가 곧 위에서 아래 순서다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    step_no: int = Field(..., ge=1, description="1-based 단계 번호")
+    region_id: str | None = Field(None, description="이 단계가 속한 region 식별자")
+
+
+class OcrProblem(_OcrContentRequired):
+    """문제 1개 — 표시 텍스트와 검증용 LaTeX."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class OcrAnalyzeRequest(BaseModel):
+    """POST /api/v1/attempts/{attempt_id}/ocr 요청.
+
+    사진 bytes 를 받지 않는다. Backend 가 보관한 이미지의 참조만 받는다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    image_reference: str = Field(..., min_length=1, description="Backend 가 보관한 이미지 참조")
+    page_index: int | None = Field(None, ge=0, description="다중 페이지 중 몇 번째 페이지인지")
+
+    @field_validator("image_reference")
+    @classmethod
+    def _not_blank(cls, v):
+        if not v.strip():
+            raise ValueError("image_reference 는 비어 있을 수 없습니다")
+        return v.strip()
+
+
+class OcrResponse(BaseModel):
+    """POST /api/v1/attempts/{attempt_id}/ocr 응답.
+
+    OCR 결과만 담는다. Knowledge State 를 갱신하지 않고, AI② 를 호출하지 않으며,
+    Attempt/분석 이력도 남기지 않는다(분석은 `/analyze` 경로의 몫).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ocr_result_id: str = Field(..., description="OCR 결과 식별자")
+    attempt_id: str
+    status: OcrStatus = Field(..., description="COMPLETE | PARTIAL | UNREADABLE")
+    model_version: str = Field(..., description="OCR 모델 버전")
+    representation: Literal["structured", "raw_text"] = Field(
+        "structured", description="structured provider 결과 또는 의미 분리 전 raw OCR 미리보기"
+    )
+    ocr_confidence: float | None = Field(
+        None, ge=0.0, le=1.0, description="전체 OCR 신뢰도. provider가 제공하지 않으면 null"
+    )
+    problem: OcrProblem | None = Field(
+        None, description="구조화 OCR 결과. raw_text 모드에서는 null이며 추정하지 않는다"
+    )
+    regions: list[OcrRegion] = Field(default_factory=list)
+    solution_steps: list[OcrStep] = Field(default_factory=list)
+    raw_text: str | None = Field(None, description="raw_text 모드에서만 제공하는 전체 OCR 텍스트")
+    raw_lines: list[OcrRawTextLine] = Field(
+        default_factory=list, description="raw_text 모드의 순서·좌표·confidence 미리보기"
+    )
+    page_index: int | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _steps_are_top_to_bottom(self):
+        if self.representation == "structured" and self.problem is None:
+            raise ValueError("structured OCR 응답에는 problem 이 있어야 합니다")
+        if self.representation == "raw_text":
+            if self.problem is not None or self.regions or self.solution_steps:
+                raise ValueError(
+                    "raw_text OCR은 problem/regions/solution_steps 를 추정해 넣지 않습니다"
+                )
+            if self.raw_text is None:
+                raise ValueError("raw_text 표현에는 raw_text 필드가 필요합니다")
+        elif self.raw_text is not None or self.raw_lines:
+            raise ValueError("structured OCR 응답에는 raw_text 필드를 넣지 않습니다")
+        nos = [step.step_no for step in self.solution_steps]
+        if any(b <= a for a, b in zip(nos, nos[1:])):
+            raise ValueError("풀이 단계는 위에서 아래 순서(번호 증가)여야 합니다")
+        return self

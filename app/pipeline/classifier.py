@@ -7,6 +7,7 @@ from sympy import Add, simplify
 
 from app.taxonomy import related_skill_ids, skill_by_id
 
+from .knowledge import SKILL_LINEAR
 from .parser import normalize, parse_line
 
 # 오개념 트리 node_code는 frozen taxonomy(data/misconceptions.json)가
@@ -14,6 +15,7 @@ from .parser import normalize, parse_line
 # 실제 ID 유효성은 app.taxonomy 조회로 확인한다.
 MISCONCEPTION_DISTRIBUTION = "2.1"   # 분배법칙 누락
 MISCONCEPTION_TRANSPOSITION = "3.1"  # 이항 시 부호 미변경
+MISCONCEPTION_ASYMMETRY = "3.2"      # 등식 양변 조작 비대칭 (PHASE 9-5)
 
 # 기존 4개 skill은 응답 라벨을 그대로 유지한다(backward compatibility).
 # taxonomy에 존재하지 않으면 아래 모듈 임포트 시점에 실패한다(fail fast).
@@ -44,19 +46,35 @@ class ErrorInfo:
 # misconception은 실제 근거가 있을 때만 연결한다 — 단순 계산 오류는 빈 목록.
 _TAXONOMY_BINDING: dict[str, tuple[str, str, str | None]] = {
     "distribution": ("concept_error", "distribution_omit", MISCONCEPTION_DISTRIBUTION),
+    # "transposition" 은 하위호환 별칭 — 3.1 과 동일하게 유지한다.
     "transposition": ("concept_error", "sign_not_flipped", MISCONCEPTION_TRANSPOSITION),
+    # PHASE 9-5 — 이항 계열 오류를 두 원인으로 세분화한다.
+    #   transpose_sign      : 부호 미변경      → 3.1
+    #   transposition_asymmetry : 양변 조작 비대칭 → 3.2
+    # 3.1 과 3.2 의 taxonomy typical_error_subtype 은 둘 다 sign_not_flipped 이다.
+    "transposition_sign": ("concept_error", "sign_not_flipped", MISCONCEPTION_TRANSPOSITION),
+    "transposition_asymmetry": ("concept_error", "sign_not_flipped", MISCONCEPTION_ASYMMETRY),
     "comprehension": ("comprehension", "misread_problem", None),
     "calculation": ("calculation", "arithmetic_slip", None),
+    # A6 P1 — 표현식 모드에서 마지막 줄이 요구 형태(target_form)를 못 맞춘 경우.
+    # "결과 형태" 오류이므로 concept_error(오개념)가 아니라 procedure 로 둔다.
+    # 기획 확정(2026-11-16, Q-A6-3): 현행 유지. 근거는 계약서 §13.5.
+    "wrong_form": ("procedure", "method_mismatch", None),
 }
 _SKILL_BY_KIND: dict[str, str] = {
     "distribution": SKILL_DISTRIBUTION,
     "transposition": SKILL_TRANSPOSITION,
+    "transposition_sign": SKILL_TRANSPOSITION,
+    "transposition_asymmetry": SKILL_TRANSPOSITION,
     "comprehension": SKILL_COMPREHENSION,
     "calculation": SKILL_CALCULATION,
+    "wrong_form": SKILL_LINEAR,
 }
 _CONFIDENCE_BY_KIND: dict[str, float] = {
     "distribution": 0.9,
     "transposition": 0.9,
+    "transposition_sign": 0.9,
+    "transposition_asymmetry": 0.9,
     "comprehension": 0.85,
     "calculation": 0.75,
 }
@@ -88,6 +106,24 @@ def _error_info(kind: str) -> ErrorInfo:
         error_subtype=error_subtype,
         skill_ids=skill_ids,
         misconception_ids=misconception_ids,
+    )
+
+
+def form_violation_info(skill_id: str) -> ErrorInfo:
+    """표현식 모드의 형태 위반(target_form 불충족) 오류 정보.
+
+    동치는 모두 성립하므로 계산 오류가 아니다. 관측된 문제 Skill 에 귀속하고,
+    근거 없는 오개념은 붙이지 않는다(ADR-02).
+    """
+    error_type, error_subtype, misconception_id = _TAXONOMY_BINDING["wrong_form"]
+    return ErrorInfo(
+        error_type=error_type,
+        skill=skill_id,
+        misconception_id=misconception_id,
+        confidence=0.8,
+        error_subtype=error_subtype,
+        skill_ids=(skill_id,),
+        misconception_ids=(),
     )
 
 
@@ -175,25 +211,38 @@ def _is_removal_of(delta, expr) -> bool:
     return False
 
 
-def _is_transposition_error(prev, cur) -> bool:
-    """이항 계열 오류 — 부호 미변경(합 0) 또는 항 누락(한쪽만 변화)."""
+def _transposition_cause(prev, cur) -> str | None:
+    """이항 계열 오류의 원인을 판별해 kind 문자열을 반환한다.
+
+    판정 조건 자체는 기존 `_is_transposition_error()` 와 동일하며(조건 변경 없음),
+    두 원인을 구분해 반환만 한다.
+
+      "transposition_sign"       — 부호 미변경 (d_lhs + d_rhs == 0)          → 3.1
+      "transposition_asymmetry"  — 한쪽에서 뺀 항을 반대쪽에 반영하지 않음   → 3.2
+      None                       — 이항 계열 오류 아님
+    """
     if prev is None or cur is None or prev[0] != "eq" or cur[0] != "eq":
-        return False
+        return None
     try:
         d_lhs = simplify(cur[1] - prev[1])
         d_rhs = simplify(cur[2] - prev[2])
     except Exception:
-        return False
+        return None
     if d_lhs == 0 and d_rhs == 0:
-        return False
+        return None
     if simplify(d_lhs + d_rhs) == 0:
-        return True  # 부호 미변경: 한쪽에서 뺀 만큼 반대쪽에 더함
-    # 항 누락: 한쪽에서 제거한 항이 반대쪽에 반영되지 않음
+        return "transposition_sign"  # 부호 미변경
+    # 항 누락: 한쪽에서 제거한 항이 반대쪽에 반영되지 않음 → 양변 조작 비대칭
     if d_rhs == 0 and _is_removal_of(d_lhs, prev[1]):
-        return True
+        return "transposition_asymmetry"
     if d_lhs == 0 and _is_removal_of(d_rhs, prev[2]):
-        return True
-    return False
+        return "transposition_asymmetry"
+    return None
+
+
+def _is_transposition_error(prev, cur) -> bool:
+    """이항 계열 오류 여부. 판정 조건은 PHASE 9-5 이전과 동일하다."""
+    return _transposition_cause(prev, cur) is not None
 
 
 def _eq_signature(node, syms) -> list:
@@ -236,7 +285,7 @@ def _is_comprehension_error(problem, cur, error_index: int) -> bool:
 def classify(problem_latex: str, steps: list[str], error_index: int) -> ErrorInfo:
     """오류 단계를 오개념 트리에 연결한다 (자유 생성 금지 — ADR-02).
 
-    판정 우선순위: 분배법칙 > 이항 부호 > 문제 오독 > 계산.
+    판정 우선순위: 분배법칙 > 이항(부호 미변경 / 양변 조작 비대칭) > 문제 오독 > 계산.
     기준선은 '바로 앞의 판정 가능 줄'이다 — 인식 실패 줄은 건너뛴다 (ADR-03).
     반환되는 모든 ID는 frozen taxonomy에 존재하며, mapping은
     _TAXONOMY_BINDING 하나를 통해서만 만들어진다.
@@ -253,8 +302,9 @@ def classify(problem_latex: str, steps: list[str], error_index: int) -> ErrorInf
 
     if _is_distribution_error(prev_raw, prev, cur):
         return _error_info("distribution")
-    if _is_transposition_error(prev, cur):
-        return _error_info("transposition")
+    transposition = _transposition_cause(prev, cur)
+    if transposition is not None:
+        return _error_info(transposition)
     if _is_comprehension_error(problem, cur, error_index):
         return _error_info("comprehension")
     return _error_info("calculation")

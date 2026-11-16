@@ -1,0 +1,39 @@
+AI① A6 P1 (표현식 문제) 배포 공지 — 2026-11-13
+================================================
+
+AI① 배포 완료했습니다. Backend 전송 ON 은 아래 확인 후 진행해 주세요.
+
+1) 요청 필드 (둘 다 선택)
+   - problem_type: "equation" | "expression"   (생략 시 equation = 기존과 완전 동일)
+   - target_form : "integer" | "expanded" | "factored"  (생략 시 동치만 검사)
+   - 같은 attempt_id 재전송 시 두 값을 같은 값으로 보내 주세요.
+     다르면 409 E_ATTEMPT_CONFLICT (분석 결과가 달라지므로 덮어쓰지 않음).
+
+2) 422 코드와 retryable
+   - E_UNSUPPORTED_INEQUALITY : 부등식은 P1 범위 밖. 분석/저장 안 함. retryable=false
+   - E_UNSUPPORTED_FUNCTION    : 함수 표기(f(x) 등)는 P1 범위 밖. 분석/저장 안 함. retryable=false
+   - E_INVALID_TARGET_FORM    : equation + target_form, 또는 허용 밖 값.
+                                 분석/저장 안 함. retryable=false, FAILED 행 생성 안 함
+   - E_INVALID_PROBLEM_TYPE   : problem_type 값 오류. retryable=false
+   → retryable=false 는 재전송/재촬영 유도 금지 신호입니다.
+   → detail.analysis_status 는 UNKNOWN(E_UNRECOGNIZED/E_UNVERIFIABLE)에만 붙습니다.
+
+3) 판정 결과
+   - analysis_status=ANALYZED        : correct=true | false
+   - analysis_status=REVIEW_REQUIRED : correct=null (보류). errors=[], error_step=null,
+                                        Knowledge State/관측 갱신 없음
+   - UNKNOWN                         : 422, 본문 없음(detail.analysis_status="UNKNOWN")
+   - 형태 위반(target_form 불충족)    : correct=false, error_type=procedure,
+                                        error_subtype=method_mismatch, misconception_tags=[]
+                                        (valid 는 전부 true 일 수 있음 — 계산 오류 아님)
+
+4) 에러 우선순위 (겹칠 때)
+   입력 크기/빈 풀이 → 문제식 부등호·함수 표기 → problem_type/target_form 계약 →
+   문제식 파싱/유형 → 판정 불가
+
+5) 배포 순서
+   AI① 먼저 배포 완료 → Backend 전송 ON.
+   (구버전 AI① 은 extra="forbid" 라서 problem_type 을 받으면 422 가 납니다.)
+
+검증: 전체 테스트 1809 passed, pyflakes 0.
+계약 상세: docs/AI1_표현식문제_계약초안_A6.md §13·§14

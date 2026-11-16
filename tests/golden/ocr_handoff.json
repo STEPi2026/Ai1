@@ -1,0 +1,807 @@
+{
+  "meta": {
+    "name": "ocr_handoff",
+    "unit": "OCR → Attempt 분석 handoff (PHASE 9-8B, 대조표 §14.18)",
+    "source": "docs/AI1_명세서_대조표.md §14.18 handoff 규칙",
+    "composition": {
+      "complete": 4,
+      "partial": 3,
+      "unreadable": 1,
+      "skip": 2,
+      "unknown": 1
+    },
+    "gate": {
+      "step_accuracy": 1.0,
+      "error_type_accuracy": 1.0
+    },
+    "notes": [
+      "expected 값은 handoff 규칙(§14.18)으로 고정한다. 규칙이 바뀌면 함께 갱신한다.",
+      "학생 ID 는 case 마다 분리해 Knowledge State 가 섞이지 않게 한다.",
+      "ocr_result 는 OcrResult 직렬화 형태다. provider 입력 = OCR 응답의 원천.",
+      "OH08 은 text 와 latex_text 가 다른 단계로 'latex_text 우선' 규칙을 드러낸다.",
+      "호출 금지 3종: UNREADABLE / 검증용 problem LaTeX 없음 / 풀이 단계 0개.",
+      "풀이 단계가 1개 이상이고 전부 '???' 면 호출한다 — AI¹ 이 422 UNKNOWN 을 돌려준다."
+    ]
+  },
+  "cases": [
+    {
+      "id": "OH01",
+      "category": "complete-correct",
+      "description": "COMPLETE · 정답 풀이 → ANALYZED",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2(x-3)=6",
+          "latex_text": "2(x-3)=6",
+          "confidence": 0.97,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": "2(x-3)=6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.97,
+            "unreadable": false,
+            "kind": "printed",
+            "bbox": {
+              "x": 40.0,
+              "y": 20.0,
+              "width": 960.0,
+              "height": 120.0
+            }
+          },
+          {
+            "text": null,
+            "latex_text": null,
+            "confidence": 0.95,
+            "unreadable": false,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 40.0,
+              "y": 130.0,
+              "width": 900.0,
+              "height": 1400.0
+            }
+          }
+        ],
+        "steps": [
+          {
+            "text": "2(x-3)=6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.96,
+            "unreadable": false,
+            "step_no": 1,
+            "region_id": null
+          },
+          {
+            "text": "2x-6=6",
+            "latex_text": "2x-6=6",
+            "confidence": 0.94,
+            "unreadable": false,
+            "step_no": 2,
+            "region_id": null
+          },
+          {
+            "text": "2x=12",
+            "latex_text": "2x=12",
+            "confidence": 0.93,
+            "unreadable": false,
+            "step_no": 3,
+            "region_id": null
+          },
+          {
+            "text": "x=6",
+            "latex_text": "x=6",
+            "confidence": 0.92,
+            "unreadable": false,
+            "step_no": 4,
+            "region_id": null
+          }
+        ],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH01",
+        "problem_id": "P-OH01",
+        "problem_skills": [
+          "linear_equation"
+        ]
+      },
+      "expected_request": {
+        "problem_id": "P-OH01",
+        "problem_latex": "2(x-3)=6",
+        "problem_skills": [
+          "linear_equation"
+        ],
+        "student_id": "S-OH01",
+        "solution_text": "2(x-3)=6\n2x-6=6\n2x=12\nx=6"
+      },
+      "expected_http_status": 200,
+      "expected_analysis": {
+        "analysis_status": "ANALYZED",
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null,
+        "skill": "linear_equation",
+        "state": "learning",
+        "misconception_id": null,
+        "misconception_tags": [],
+        "misconception_tag": null,
+        "unrecognized": [],
+        "valid": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "confidence": null,
+        "official_skill_codes": [],
+        "official_misconception_codes": [],
+        "provisional_skill_codes": [],
+        "provisional_misconception_codes": [],
+        "error_count": 0,
+        "error_steps": []
+      }
+    },
+    {
+      "id": "OH02",
+      "category": "complete-concept-error",
+      "description": "COMPLETE · 분배법칙 오류(2.1) → ANALYZED + Backend 코드",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2(x-3)=6",
+          "latex_text": "2(x-3)=6",
+          "confidence": 0.97,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": null,
+            "latex_text": null,
+            "confidence": 0.95,
+            "unreadable": false,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 40.0,
+              "y": 130.0,
+              "width": 900.0,
+              "height": 900.0
+            }
+          }
+        ],
+        "steps": [
+          {
+            "text": "2(x-3)=6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.96,
+            "unreadable": false,
+            "step_no": 1,
+            "region_id": null
+          },
+          {
+            "text": "2x-3=6",
+            "latex_text": "2x-3=6",
+            "confidence": 0.9,
+            "unreadable": false,
+            "step_no": 2,
+            "region_id": null
+          }
+        ],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH02",
+        "problem_id": "P-OH02",
+        "problem_skills": [
+          "linear_equation",
+          "distribution"
+        ]
+      },
+      "expected_request": {
+        "problem_id": "P-OH02",
+        "problem_latex": "2(x-3)=6",
+        "problem_skills": [
+          "linear_equation",
+          "distribution"
+        ],
+        "student_id": "S-OH02",
+        "solution_text": "2(x-3)=6\n2x-3=6"
+      },
+      "expected_http_status": 200,
+      "expected_analysis": {
+        "analysis_status": "ANALYZED",
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "error_subtype": "distribution_omit",
+        "skill": "distribution",
+        "state": "needs_practice",
+        "misconception_id": "2.1",
+        "misconception_tags": [
+          "2.1"
+        ],
+        "misconception_tag": "2.1",
+        "unrecognized": [],
+        "valid": [
+          true,
+          false
+        ],
+        "confidence": 0.9,
+        "official_skill_codes": [
+          "SKL-1-004"
+        ],
+        "official_misconception_codes": [
+          "MIS-1-004"
+        ],
+        "provisional_skill_codes": [],
+        "provisional_misconception_codes": [],
+        "error_count": 1,
+        "error_steps": [
+          2
+        ]
+      }
+    },
+    {
+      "id": "OH03",
+      "category": "partial-unreadable-step",
+      "description": "PARTIAL · 마지막 단계 ??? → REVIEW_REQUIRED, 판정 가능 오류와 혼동 없음",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2(x-3)=6",
+          "latex_text": "2(x-3)=6",
+          "confidence": 0.97,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": null,
+            "latex_text": null,
+            "confidence": 0.95,
+            "unreadable": false,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 40.0,
+              "y": 130.0,
+              "width": 900.0,
+              "height": 900.0
+            }
+          }
+        ],
+        "steps": [
+          {
+            "text": "2(x-3)=6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.96,
+            "unreadable": false,
+            "step_no": 1,
+            "region_id": null
+          },
+          {
+            "text": "2x-3=6",
+            "latex_text": "2x-3=6",
+            "confidence": 0.9,
+            "unreadable": false,
+            "step_no": 2,
+            "region_id": null
+          },
+          {
+            "text": "???",
+            "latex_text": null,
+            "confidence": 0.21,
+            "unreadable": true,
+            "step_no": 3,
+            "region_id": null
+          }
+        ],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH03",
+        "problem_id": "P-OH03",
+        "problem_skills": [
+          "linear_equation",
+          "distribution"
+        ]
+      },
+      "expected_request": {
+        "problem_id": "P-OH03",
+        "problem_latex": "2(x-3)=6",
+        "problem_skills": [
+          "linear_equation",
+          "distribution"
+        ],
+        "student_id": "S-OH03",
+        "solution_text": "2(x-3)=6\n2x-3=6\n???"
+      },
+      "expected_http_status": 200,
+      "expected_analysis": {
+        "analysis_status": "REVIEW_REQUIRED",
+        "correct": false,
+        "error_step": 2,
+        "error_type": "concept_error",
+        "error_subtype": "distribution_omit",
+        "skill": "distribution",
+        "state": "needs_practice",
+        "misconception_id": "2.1",
+        "misconception_tags": [
+          "2.1"
+        ],
+        "misconception_tag": "2.1",
+        "unrecognized": [
+          3
+        ],
+        "valid": [
+          true,
+          false,
+          null
+        ],
+        "confidence": 0.9,
+        "official_skill_codes": [
+          "SKL-1-004"
+        ],
+        "official_misconception_codes": [
+          "MIS-1-004"
+        ],
+        "provisional_skill_codes": [],
+        "provisional_misconception_codes": [],
+        "error_count": 1,
+        "error_steps": [
+          2
+        ]
+      }
+    },
+    {
+      "id": "OH04",
+      "category": "unreadable-skip",
+      "description": "UNREADABLE · 분석 호출 금지(아무것도 채우지 않는다)",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "???",
+          "latex_text": null,
+          "confidence": 0.05,
+          "unreadable": true
+        },
+        "regions": [
+          {
+            "text": "???",
+            "latex_text": null,
+            "confidence": 0.05,
+            "unreadable": true,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 0.0,
+              "y": 0.0,
+              "width": 100.0,
+              "height": 100.0
+            }
+          }
+        ],
+        "steps": [],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH04",
+        "problem_id": "P-OH04",
+        "problem_skills": [
+          "linear_equation"
+        ]
+      },
+      "expected_request": null,
+      "expected_http_status": null,
+      "expected_analysis": null
+    },
+    {
+      "id": "OH05",
+      "category": "missing-problem-latex-skip",
+      "description": "검증용 problem LaTeX 누락 · 분석 호출 금지",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2(x-3)=6",
+          "latex_text": null,
+          "confidence": 0.9,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": null,
+            "latex_text": null,
+            "confidence": 0.9,
+            "unreadable": false,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 40.0,
+              "y": 130.0,
+              "width": 900.0,
+              "height": 900.0
+            }
+          }
+        ],
+        "steps": [
+          {
+            "text": "2(x-3)=6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.9,
+            "unreadable": false,
+            "step_no": 1,
+            "region_id": null
+          }
+        ],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH05",
+        "problem_id": "P-OH05",
+        "problem_skills": [
+          "linear_equation"
+        ]
+      },
+      "expected_request": null,
+      "expected_http_status": null,
+      "expected_analysis": null
+    },
+    {
+      "id": "OH06",
+      "category": "complete-multi-error",
+      "description": "COMPLETE · 독립 오류 3건 → 대표 오류는 가장 낮은 step_no",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2(x-3)=10",
+          "latex_text": "2(x-3)=10",
+          "confidence": 0.97,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": null,
+            "latex_text": null,
+            "confidence": 0.95,
+            "unreadable": false,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 40.0,
+              "y": 130.0,
+              "width": 900.0,
+              "height": 1400.0
+            }
+          }
+        ],
+        "steps": [
+          {
+            "text": "2(x-3)=10",
+            "latex_text": "2(x-3)=10",
+            "confidence": 0.94,
+            "unreadable": false,
+            "step_no": 1,
+            "region_id": null
+          },
+          {
+            "text": "2x-6=11",
+            "latex_text": "2x-6=11",
+            "confidence": 0.75,
+            "unreadable": false,
+            "step_no": 2,
+            "region_id": null
+          },
+          {
+            "text": "2x=17",
+            "latex_text": "2x=17",
+            "confidence": 0.75,
+            "unreadable": false,
+            "step_no": 3,
+            "region_id": null
+          },
+          {
+            "text": "x=8",
+            "latex_text": "x=8",
+            "confidence": 0.75,
+            "unreadable": false,
+            "step_no": 4,
+            "region_id": null
+          },
+          {
+            "text": "x+1=9",
+            "latex_text": "x+1=9",
+            "confidence": 0.75,
+            "unreadable": false,
+            "step_no": 5,
+            "region_id": null
+          },
+          {
+            "text": "x=7",
+            "latex_text": "x=7",
+            "confidence": 0.75,
+            "unreadable": false,
+            "step_no": 6,
+            "region_id": null
+          }
+        ],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH06",
+        "problem_id": "P-OH06",
+        "problem_skills": [
+          "linear_equation",
+          "arithmetic"
+        ]
+      },
+      "expected_request": {
+        "problem_id": "P-OH06",
+        "problem_latex": "2(x-3)=10",
+        "problem_skills": [
+          "linear_equation",
+          "arithmetic"
+        ],
+        "student_id": "S-OH06",
+        "solution_text": "2(x-3)=10\n2x-6=11\n2x=17\nx=8\nx+1=9\nx=7"
+      },
+      "expected_http_status": 200,
+      "expected_analysis": {
+        "analysis_status": "ANALYZED",
+        "correct": false,
+        "error_step": 2,
+        "error_type": "calculation",
+        "error_subtype": "arithmetic_slip",
+        "skill": "arithmetic",
+        "state": "learning",
+        "misconception_id": null,
+        "misconception_tags": [],
+        "misconception_tag": null,
+        "unrecognized": [],
+        "valid": [
+          true,
+          false,
+          true,
+          false,
+          true,
+          false
+        ],
+        "confidence": 0.75,
+        "official_skill_codes": [],
+        "official_misconception_codes": [],
+        "provisional_skill_codes": [],
+        "provisional_misconception_codes": [],
+        "error_count": 3,
+        "error_steps": [
+          2,
+          4,
+          6
+        ]
+      }
+    },
+    {
+      "id": "OH07",
+      "category": "no-readable-step-unknown",
+      "description": "읽힌 단계 없음 · /analyze 는 422 UNKNOWN (Attempt 미저장)",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2(x-3)=6",
+          "latex_text": "2(x-3)=6",
+          "confidence": 0.97,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": null,
+            "latex_text": null,
+            "confidence": 0.9,
+            "unreadable": false,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 40.0,
+              "y": 130.0,
+              "width": 900.0,
+              "height": 900.0
+            }
+          }
+        ],
+        "steps": [
+          {
+            "text": "???",
+            "latex_text": null,
+            "confidence": 0.1,
+            "unreadable": true,
+            "step_no": 1,
+            "region_id": null
+          }
+        ],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH07",
+        "problem_id": "P-OH07",
+        "problem_skills": [
+          "linear_equation"
+        ]
+      },
+      "expected_request": {
+        "problem_id": "P-OH07",
+        "problem_latex": "2(x-3)=6",
+        "problem_skills": [
+          "linear_equation"
+        ],
+        "student_id": "S-OH07",
+        "solution_text": "???"
+      },
+      "expected_http_status": 422,
+      "expected_analysis": null
+    },
+    {
+      "id": "OH08",
+      "category": "complete-text-vs-latex-priority",
+      "description": "읽힌 step 의 text 와 latex_text 가 다름 → latex_text 우선 규칙, latex_text 가 없으면 text fallback",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2 x - 3 = 6",
+          "latex_text": "2(x-3)=6",
+          "confidence": 0.94,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": "2 x - 3 = 6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.94,
+            "unreadable": false,
+            "kind": "printed",
+            "bbox": {
+              "x": 40.0,
+              "y": 20.0,
+              "width": 960.0,
+              "height": 120.0
+            }
+          },
+          {
+            "text": null,
+            "latex_text": null,
+            "confidence": 0.93,
+            "unreadable": false,
+            "kind": "handwritten",
+            "bbox": {
+              "x": 40.0,
+              "y": 130.0,
+              "width": 900.0,
+              "height": 900.0
+            }
+          }
+        ],
+        "steps": [
+          {
+            "text": "2 x - 3 = 6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.94,
+            "unreadable": false,
+            "step_no": 1,
+            "region_id": null
+          },
+          {
+            "text": "2 x - 6 = 6",
+            "latex_text": "2x-6=6",
+            "confidence": 0.92,
+            "unreadable": false,
+            "step_no": 2,
+            "region_id": null
+          },
+          {
+            "text": "x=6",
+            "latex_text": null,
+            "confidence": 0.91,
+            "unreadable": false,
+            "step_no": 3,
+            "region_id": null
+          }
+        ],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH08",
+        "problem_id": "P-OH08",
+        "problem_skills": [
+          "linear_equation"
+        ]
+      },
+      "expected_request": {
+        "problem_id": "P-OH08",
+        "problem_latex": "2(x-3)=6",
+        "problem_skills": [
+          "linear_equation"
+        ],
+        "student_id": "S-OH08",
+        "solution_text": "2(x-3)=6\n2x-6=6\nx=6"
+      },
+      "expected_http_status": 200,
+      "expected_analysis": {
+        "analysis_status": "ANALYZED",
+        "correct": true,
+        "error_step": null,
+        "error_type": null,
+        "error_subtype": null,
+        "skill": "linear_equation",
+        "state": "learning",
+        "misconception_id": null,
+        "misconception_tags": [],
+        "misconception_tag": null,
+        "unrecognized": [],
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "confidence": null,
+        "official_skill_codes": [],
+        "official_misconception_codes": [],
+        "provisional_skill_codes": [],
+        "provisional_misconception_codes": [],
+        "error_count": 0,
+        "error_steps": []
+      }
+    },
+    {
+      "id": "OH09",
+      "category": "empty-solution-steps-skip",
+      "description": "읽힌 문제 + solution_steps=[] (status PARTIAL) · 분석 요청 skip (solution_text=\"\" 요청을 만들지 않는다)",
+      "ocr_result": {
+        "model_version": "fake-ocr-1.0",
+        "problem": {
+          "text": "2(x-3)=6",
+          "latex_text": "2(x-3)=6",
+          "confidence": 0.95,
+          "unreadable": false
+        },
+        "regions": [
+          {
+            "text": "2(x-3)=6",
+            "latex_text": "2(x-3)=6",
+            "confidence": 0.95,
+            "unreadable": false,
+            "kind": "printed",
+            "bbox": {
+              "x": 40.0,
+              "y": 20.0,
+              "width": 960.0,
+              "height": 120.0
+            }
+          }
+        ],
+        "steps": [],
+        "ocr_result_id": null,
+        "page_index": null,
+        "warnings": []
+      },
+      "context": {
+        "student_id": "S-OH09",
+        "problem_id": "P-OH09",
+        "problem_skills": [
+          "linear_equation"
+        ]
+      },
+      "expected_request": null,
+      "expected_http_status": null,
+      "expected_analysis": null
+    }
+  ]
+}

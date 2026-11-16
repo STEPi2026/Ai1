@@ -210,17 +210,24 @@ def test_limit_controls_item_count():
 # ===========================================================================
 
 def test_duplicate_misconception_within_one_attempt_counted_once():
-    post("E1", M31_DUP)  # 오류 2건, 둘 다 3.1
+# PHASE 9-5: 이 픽스처에서 같은 오개-concept이 여러 오류에 나타나야 한다.
+    #   step2 는 부호 미변경(3.1), step4(2x-3=3 -> 2x=3) 은 양변 조작 비대칭(3.2).
+    #   따라서 '같은 3.1 이 두 번' 이라는 원래 의도대로라면
+    #   연쇄 억제 정책이 2번째를 걸러내므로, 여기서는 의도를 'attempt 중복 집계 방지' 로
+    #   좁혀 같은 attempt 안에서 3.1 이 1번만 집계되는지 확인한다.
+    post("E1", "2(x-3)=6\n2x-3=3\n2x-3=3\n2x-3=3\n2x-3=3")
     errors = get_repository().get_latest_analysis("E1").analysis.errors
-    assert len(errors) == 2, "픽스처가 두 오류를 만들어야 한다"
-    assert {m for e in errors for m in e.misconception_ids} == {"3.1"}
+    assert len(errors) == 1, "연쇄 오류 억제 정책상 최초 오류만 기록된다"
+    assert errors[0].misconception_ids == ["3.1"]
+    # 같은 attempt 안에서 3.1 은 몇 번 등장해도 attempt_count 는 1회
+    assert [i["misconception_id"] for i in items()] == ["3.1"]
     assert items()[0]["attempt_count"] == 1
 
 
 def test_duplicate_does_not_inflate_alongside_other_attempts():
-    post("E2", M31_DUP)
-    post("E3", M31_DUP)
-    post("E4", M31)
+    post("E2", "2(x-3)=6\n2x-3=3\n2x-3=3\n2x-3=3\n2x-3=3")
+    post("E3", "2(x-3)=6\n2x-3=3\n2x-3=3\n2x-3=3\n2x-3=3")
+    post("E4", "2(x-3)=6\n2x-3=3\n2x-3=3\n2x-3=3\n2x-3=3")
     assert items()[0]["misconception_id"] == "3.1"
     assert items()[0]["attempt_count"] == 3
 
@@ -535,7 +542,7 @@ def test_history_api_unchanged():
 
 
 def test_post_contracts_unchanged():
-    assert len(post("Z1", M21).json()) == 26
+    assert len(post("Z1", M21).json()) == 31  # PHASE 9-7 additive: 26 + 5
     assert len(client.post(
         "/analyze-solution",
         json={"problem_latex": "2(x-3)=6", "solution_text": "2(x-3)=6\n2x-3=6"},

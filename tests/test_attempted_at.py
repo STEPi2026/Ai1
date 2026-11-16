@@ -455,7 +455,11 @@ def test_attempt_list_response_unchanged():
 
 def test_attempt_api_contracts_intact():
     posted = post("Q1", "S1", WRONG).json()
-    assert len(posted) == 26
+    # PHASE 9-7 additive: 기존 26 + Backend 코드 5 = 31
+    assert len(posted) == 31
+    assert posted["official_misconception_codes"] == ["MIS-1-004"]
+    assert posted["misconception_tag"] == "2.1"
+    assert posted["provisional_misconception_codes"] == []
     assert posted["misconception_tags"] == ["2.1"]
     assert len({post("Q1", "S1", WRONG).json()["analysis_id"] for _ in range(3)}) == 1
     assert post("Q1", "S1", "2(x-3)=6\nx=3").status_code == 409

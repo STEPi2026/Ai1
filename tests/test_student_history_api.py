@@ -332,7 +332,8 @@ def test_item_without_analysis_has_null_summary():
 
 
 def test_detail_path_is_url_encoded_and_works():
-    item = history().json()["items"][0] if False else None
+    # 제출 전에는 이력이 비어 있다 (이 테스트가 만든 기록이 아님을 확인)
+    assert history().json()["items"] == []
     post("L5", "S1")
     item = history().json()["items"][0]
     assert "#" in item["latest_analysis_id"]

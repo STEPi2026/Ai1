@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stepi.internal/eval/ocr-labels.schema.json",
+  "title": "OCR 평가 라벨",
+  "description": "E01~E16 유형별 실제 사진의 정답 라벨. 이미지와 원본 벤더 응답은 저장소에 커밋하지 않는다 — 이 라벨도 eval/_local/ 아래에만 두고, 저장소에는 스키마와 예시만 둔다.",
+  "type": "object",
+  "required": ["pricing", "cases"],
+  "properties": {
+    "pricing": {
+      "type": "object",
+      "description": "비용 추정용 단가. 벤더 요금 문서 값. 과금 대상 텍스트 행이 12줄을 초과하면(13줄부터) 페이지 단가를 적용한다.",
+      "properties": {
+        "per_image_usd": { "type": "number" },
+        "per_page_usd": { "type": "number" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "image_file", "problem_latex_text"],
+        "properties": {
+          "id": { "type": "string", "description": "케이스 ID (예: E01)" },
+          "category": {
+            "type": "string",
+            "description": "E01~E16 유형 코드"
+          },
+          "image_file": {
+            "type": "string",
+            "description": "eval/_local/images/ 아래의 상대 경로 (저장소 미커밋)"
+          },
+          "image_reference": {
+            "type": "string",
+            "description": "Backend presigned HTTPS URL (만료되므로 실행 시 생성)"
+          },
+          "problem_latex_text": {
+            "type": "string",
+            "description": "문제의 정답 LaTeX (검증용). 판정 불가면 빈 문자열."
+          },
+          "problem_text": { "type": "string" },
+          "problem_region_bbox": {
+            "type": "array",
+            "description": "문제 영역 bbox [x, y, width, height] (이미지 픽셀 좌표)",
+            "items": { "type": "number" },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "line_kinds": {
+            "type": "object",
+            "description": "**원본 줄 인덱스(문자열) → 인쇄/필기** 라벨. 인쇄/필기 정확률은 이 값으로만 채점한다 (problem_kind 에서 추론하지 않는다). provider 응답 id 를 키로 쓰지 않는다 — 반복 호출 안정성이 확인되지 않았다 (M16).",
+            "additionalProperties": {
+              "type": "string",
+              "enum": ["printed", "handwritten"]
+            }
+          },
+          "region_bboxes": {
+            "type": "object",
+            "description": "**원본 줄 인덱스(문자열) → bbox**. IoU 는 여기 있는 region 과 같은 인덱스의 예측 region 만 비교한다. provider 응답 id 를 키로 쓰면 매칭되지 않으며 경고로 집계된다.",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 4,
+              "maxItems": 4
+            }
+          },
+          "step_latex_texts": {
+            "type": "array",
+            "description": "풀이 단계별 정답 LaTeX (순서 = 단계 순서). 판정 불가 단계는 빈 문자열.",
+            "items": { "type": "string" }
+          },
+          "step_source_lines": {
+            "type": "array",
+            "description": "각 단계가 대응하는 **원본 줄 인덱스**(line_data 순서, 0-based). 단계 경계 F1 은 이 값이 있을 때만 계산한다.",
+            "items": { "type": "integer", "minimum": 0 }
+          },
+          "step_segments": {
+            "type": "array",
+            "description": "사람이 읽는용 단계 구간 [시작줄, 끝줄] (이미지 줄 번호, 1-based). 계산에는 쓰지 않는다.",
+            "items": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "step_order": {
+            "type": "array",
+            "description": "정답 단계 순서",
+            "items": { "type": "integer" }
+          },
+          "unreadable_steps": {
+            "type": "array",
+            "description": "판정 불가로 기대하는 단계 번호 (1-based)",
+            "items": { "type": "integer" }
+          },
+          "printed_handwritten": {
+            "type": "string",
+            "description": "문제 영역이 인쇄인지 필기인지 (**참고용**). 정확도 지표는 line_kinds(원본 줄) 기준으로만 계산한다 — 이 값으로 점수를 만들지 않는다.",
+            "enum": ["printed", "handwritten"]
+          },
+          "expected_error": {
+            "type": "object",
+            "description": "OCR 결과를 /analyze 에 넣었을 때 기대되는 AI¹ 판정 (B 지표용)",
+            "properties": {
+              "error_step": { "type": ["integer", "null"] },
+              "error_type": { "type": ["string", "null"] },
+              "misconception_ids": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "additionalProperties": true
+          },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

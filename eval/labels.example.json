@@ -1,0 +1,71 @@
+{
+  "_warning": "형식 시연용 합성 예시입니다. 실제 학생 사진·정답 라벨이 아닙니다. 실제 라벨은 eval/_local/labels.json 에 두며 커밋하지 않습니다.",
+  "_key_rule": "line_kinds / region_bboxes 의 키는 **원본 줄 인덱스(문자열)** 다. provider 응답 id 를 키로 쓰지 않는다 — 반복 호출 안정성이 확인되지 않았다 (M16).",
+  "pricing": {
+    "per_image_usd": 0.002,
+    "per_page_usd": 0.005,
+    "note": "합성 예시 값 — 실제 단가는 벤더 요금 문서와 측정 결과로 갱신. 과금 대상 텍스트 행이 12줄을 초과하면(13줄부터) 페이지 단가가 적용된다."
+  },
+  "cases": [
+    {
+      "id": "E01",
+      "category": "complete-correct",
+      "image_file": "images/E01.jpg",
+      "problem_latex_text": "2(x-3)=6",
+      "problem_text": "2(x-3)=6",
+      "problem_region_bbox": [40, 20, 960, 120],
+      "line_kinds": {
+        "0": "printed",
+        "1": "handwritten",
+        "2": "handwritten",
+        "3": "handwritten"
+      },
+      "region_bboxes": {
+        "0": [40, 20, 960, 120],
+        "1": [40, 150, 860, 70],
+        "2": [40, 230, 860, 70],
+        "3": [40, 310, 500, 70]
+      },
+      "step_latex_texts": ["2(x-3)=6", "2x-6=6", "2x=12", "x=6"],
+      "step_source_lines": [0, 1, 2, 3],
+      "step_segments": [[1, 1], [2, 2], [3, 3], [4, 4]],
+      "step_order": [1, 2, 3, 4],
+      "unreadable_steps": [],
+      "printed_handwritten": "printed",
+      "expected_error": {
+        "error_step": null,
+        "error_type": null,
+        "misconception_ids": []
+      },
+      "notes": "합성 예시"
+    },
+    {
+      "id": "E03",
+      "category": "partial-unreadable-step",
+      "image_file": "images/E03.jpg",
+      "problem_latex_text": "2(x-3)=6",
+      "problem_text": "2(x-3)=6",
+      "problem_region_bbox": [40, 20, 960, 120],
+      "line_kinds": {
+        "0": "printed",
+        "1": "handwritten"
+      },
+      "region_bboxes": {
+        "0": [40, 20, 960, 120],
+        "1": [40, 150, 860, 70]
+      },
+      "step_latex_texts": ["2(x-3)=6", ""],
+      "step_source_lines": [0, 1],
+      "step_segments": [[1, 1], [2, 2]],
+      "step_order": [1, 2],
+      "unreadable_steps": [2],
+      "printed_handwritten": "printed",
+      "expected_error": {
+        "error_step": null,
+        "error_type": null,
+        "misconception_ids": []
+      },
+      "notes": "합성 예시 — 2단계가 판정 불가(빈 문자열)"
+    }
+  ]
+}

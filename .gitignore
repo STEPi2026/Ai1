@@ -2,6 +2,38 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# 환경 변수·secret — 커밋 금지 (BE→AI¹ 인증키, OCR 벤더 인증키 등)
 .env
 .env.*
+*.env
 !.env.example
+secrets/
+*.secret
+*.pem
+*.key
+# Google Cloud service-account JSON keys — keep credentials outside the repository.
+*service-account*.json
+*service_account*.json
+*google-credentials*.json
+*google_credentials*.json
+*application_default_credentials.json
+burnished-timer-460304-j7-2d6c39081c46.json
+
+# OCR 평가 산출물 — 커밋 금지 (벤더 원본 응답 · 학생 이미지 · 정답 라벨 · 리포트)
+# 스키마·스크립트·합성 예시(eval/labels.example.json)는 커밋한다.
+eval/_local/
+eval/_local/**
+
+# ngrok / 터널 설정 — authtoken 이 들어갈 수 있으므로 저장소에 두지 않는다.
+# 실제 설정은 %LOCALAPPDATA%\ngrok\ngrok.yml 을 사용한다.
+ngrok.yml
+*.ngrok.yml
+.ngrok/
+ngrok.log
+*.ngrok.log
+
+# 로컬 AI¹ 내부 API Key 파일 — 절대 커밋하지 않는다.
+ai1_internal_key.txt
+ai1_*key*.txt
+*.local.ps1
