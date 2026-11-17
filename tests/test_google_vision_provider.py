@@ -252,6 +252,14 @@ def test_provider_maps_client_initialization_authentication_error(tmp_path):
     [
         (RuntimeError("SERVICE_DISABLED: Vision API has not been used in project"), OcrApiDisabledError),
         (RuntimeError("billing account is not enabled"), OcrBillingRequiredError),
+        # 실제 Google 403 원문 (#10) — "requires billing to be enabled"
+        (
+            RuntimeError(
+                "PermissionDenied: 403 This API method requires billing to be "
+                "enabled. Please enable billing on project #783665453751"
+            ),
+            OcrBillingRequiredError,
+        ),
         (RuntimeError("RESOURCE_EXHAUSTED: quota exceeded"), OcrUsageLimitError),
         (RuntimeError("PERMISSION_DENIED"), OcrAuthenticationError),
         (RuntimeError("image fetch failed: requested entity was not found"), OcrImageFetchError),
@@ -453,6 +461,15 @@ def test_ocr_route_returns_raw_text_preview_without_semantic_guessing():
         (RuntimeError("SERVICE_DISABLED"), 503, "E_OCR_API_DISABLED"),
         (RuntimeError("PERMISSION_DENIED"), 503, "E_OCR_AUTH_FAILED"),
         (RuntimeError("billing account is not enabled"), 503, "E_OCR_BILLING_REQUIRED"),
+        # 실제 Google 403 원문 (#10) — "requires billing to be enabled"
+        (
+            RuntimeError(
+                "PermissionDenied: 403 This API method requires billing to be "
+                "enabled. Please enable billing on project #783665453751"
+            ),
+            503,
+            "E_OCR_BILLING_REQUIRED",
+        ),
         # 협의서 §4.6.3: 로컬 가드·quota 상한은 429 (재시도 대상 아님)
         (RuntimeError("RESOURCE_EXHAUSTED: quota exceeded"), 429, "E_OCR_USAGE_LIMIT_REACHED"),
         (RuntimeError("requested entity was not found"), 422, "E_OCR_IMAGE_FETCH_FAILED"),
@@ -475,6 +492,30 @@ def test_ocr_route_returns_clear_non_retryable_setup_errors(
 
     assert response.status_code == expected_status
     assert response.json()["detail"]["code"] == expected_code
+    assert IMAGE_URI not in response.text
+
+
+def test_vision_billing_403_is_not_reported_as_retryable_provider_error():
+    """#10 회귀: 결제 미설정 403 이 502 E_OCR_PROVIDER_ERROR 로 나가면 Backend 가 재시도한다."""
+    message = (
+        "PermissionDenied: 403 This API method requires billing to be enabled. "
+        "Please enable billing on project #783665453751 by visiting "
+        "https://console.developers.google.com/billing/enable?project=783665453751 "
+        "then retry."
+    )
+    register_ocr_provider(_provider(FakeVisionClient(error=RuntimeError(message))))
+    try:
+        response = TestClient(app).post(
+            "/api/v1/attempts/G08/ocr",
+            json={"image_reference": IMAGE_URI},
+        )
+    finally:
+        reset_ocr_provider()
+
+    # 502 는 Backend 가 일시 오류로 보고 재시도하는 코드다 — 503 fail-closed 여야 한다.
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert detail["code"] == "E_OCR_BILLING_REQUIRED"
     assert IMAGE_URI not in response.text
 
 
