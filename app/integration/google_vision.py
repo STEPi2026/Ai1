@@ -403,6 +403,9 @@ def _classify_google_error(error: BaseException, image_reference: str):
     if any(marker in lower for marker in (
         "billing account", "billing is disabled", "billing not enabled",
         "billing has not been enabled", "billing account is not enabled",
+        # 실제 Google 원문: "403 This API method requires billing to be enabled."
+        # marker 가 없으면 403 이 502 E_OCR_PROVIDER_ERROR 로 fall through 한다 (#10).
+        "requires billing", "billing to be enabled", "enable billing on project",
     )):
         return OcrBillingRequiredError(
             "Google Cloud Vision requires an active billing account; check free-tier eligibility and billing setup."
