@@ -598,6 +598,11 @@
           "target_form": {
             "anyOf": [
               {
+                "enum": [
+                  "integer",
+                  "expanded",
+                  "factored"
+                ],
                 "maxLength": 32,
                 "type": "string"
               },
@@ -959,6 +964,11 @@
           "target_form": {
             "anyOf": [
               {
+                "enum": [
+                  "integer",
+                  "expanded",
+                  "factored"
+                ],
                 "maxLength": 32,
                 "type": "string"
               },

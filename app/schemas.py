@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -13,6 +13,18 @@ EngineName = Literal["rule", "bkt"]
 # - REVIEW_REQUIRED: 일부만 판정되고 unrecognized 또는 판정 보류 단계가 남아 있음
 # - UNKNOWN       : 신뢰할 수 있는 단계 판정이 하나도 없음 (기존 422 에러에 대응)
 AnalysisStatus = Literal["ANALYZED", "REVIEW_REQUIRED", "UNKNOWN"]
+
+# A6 P1: target_form 허용값.
+# 실제 값 검증은 파이프라인(validate_problem_mode)이 수행한다 — 커스텀 오류 계약
+# (422 E_INVALID_TARGET_FORM / retryable=false)을 유지하기 위해서다. 스키마에는
+# 소비자가 허용값을 알 수 있도록 **문서용 enum** 만 노출하고 런타임 제약은 추가하지
+# 않는다. 목록은 pipeline.forms.ALLOWED_TARGET_FORMS 와 일치해야 한다
+# (tests/test_schema_target_form_enum.py 가 고정).
+TARGET_FORM_VALUES = ("integer", "expanded", "factored")
+TargetForm = Annotated[
+    str,
+    Field(max_length=32, json_schema_extra={"enum": list(TARGET_FORM_VALUES)}),
+]
 
 
 class AnalyzeSolutionRequest(BaseModel):
@@ -35,9 +47,8 @@ class AnalyzeSolutionRequest(BaseModel):
             "정답식 없이 줄↔직전 줄 동치로 판정한다. 부등식은 범위 밖이다."
         ),
     )
-    target_form: str | None = Field(
+    target_form: TargetForm | None = Field(
         None,
-        max_length=32,
         description=(
             "A6 P1: expression 문제의 요구 결과 형태(integer|expanded|factored). "
             "None 이면 동치만 검사한다. equation 과 함께 보내면 "
@@ -117,9 +128,8 @@ class AnalyzeAttemptRequest(BaseModel):
             "정답식 없이 줄↔직전 줄 동치로 판정한다. 부등식은 범위 밖이다."
         ),
     )
-    target_form: str | None = Field(
+    target_form: TargetForm | None = Field(
         None,
-        max_length=32,
         description=(
             "A6 P1: expression 문제의 요구 결과 형태(integer|expanded|factored). "
             "None 이면 동치만 검사한다. equation 과 함께 보내면 "
