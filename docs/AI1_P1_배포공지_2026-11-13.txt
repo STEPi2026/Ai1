@@ -35,5 +35,5 @@ AI① 배포 완료했습니다. Backend 전송 ON 은 아래 확인 후 진행�
    AI① 먼저 배포 완료 → Backend 전송 ON.
    (구버전 AI① 은 extra="forbid" 라서 problem_type 을 받으면 422 가 납니다.)
 
-검증: 전체 테스트 1809 passed, pyflakes 0.
-계약 상세: docs/AI1_표현식문제_계약초안_A6.md §13·§14
+검증: 전체 테스트 1826 passed, pyflakes 0.
+계약 상세: docs/AI1_표현식문제_계약초안_A6.md §13~§15
