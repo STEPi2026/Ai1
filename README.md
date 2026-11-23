@@ -306,8 +306,36 @@ powershell -ExecutionPolicy Bypass -File scripts\start_ai1_tunnel.ps1 -Action St
 
 `google-cloud-vision`은 `requirements.txt`에 선언되어 있다. 앱과 별도 eval probe는
 `eval/_local/google_vision/call_budget.jsonl`의 **누적 40회 로컬 상한**을 공유한다.
-이는 billing account 전체 quota가 아니다. API 비활성화·인증·billing 설정 오류는
-각각 `E_OCR_API_DISABLED`, `E_OCR_AUTH_FAILED`, `E_OCR_BILLING_REQUIRED`로 503을
+이는 billing account 전체 quota가 아니다.
+
+**월별 무료 한도 가드 (fail-closed).** 코드에는 무료 한도·과금 단위를 상수로 두지 않는다.
+운영자가 Google 콘솔/문서에서 확인한 값만 아래 환경변수로 주입하며, 없으면 OCR은
+503 `E_OCR_NOT_CONFIGURED`로 거부된다(provider 생성 자체를 거부).
+
+| 환경변수 | 의미 |
+| --- | --- |
+| `AI1_OCR_FREE_QUOTA_CONFIRMED` | `1` — 무료 제공량을 운영자가 확인했다는 attestation |
+| `AI1_OCR_BILLING_UNIT` | 이 provider는 `document_text_detection` 필수 (다른 값이면 차단) |
+| `AI1_OCR_MONTHLY_FREE_QUOTA` | 확인된 월 무료 OCR units |
+| `AI1_OCR_MONTHLY_CALL_CAP` | 내부 안전 상한. **무료 한도보다 작아야** 하며 같거나 크면 차단 |
+
+- 월 경계는 **UTC 1일 00:00** 이다. 이전 달 예약/결과 기록은 삭제하지 않고 보존한다.
+- 예약은 Google 요청 **전에** 잠금 안에서 기록하고 `fsync` 한다. 성공·실패·timeout·
+  403/429를 포함한 모든 시도가 차감되며, 자동 재시도는 없다(SDK `retry=None`).
+- 누적 40회와 월별 내부 상한 중 하나라도 차면 Google API를 호출하지 않는다.
+- 원장을 읽을 수 없거나 형식이 깨졌으면 503으로 차단한다.
+- 남은 수치는 **AI① 내부 상한의 잔여량**이지 Google Billing의 실제 무료 잔량이 아니다.
+  코드는 실제 잔량을 추정하지 않는다.
+
+상태 조회(읽기 전용, 원장·API 무변경):
+
+```powershell
+.venv\Scripts\python scripts\ocr_usage_status.py
+```
+
+이번 달 예약/성공/실패/미확인, 남은 내부 한도, 누적 40회 사용량, 차단 여부·사유를
+JSON으로 출력한다. API 비활성화·인증·billing 설정 오류는 각각
+`E_OCR_API_DISABLED`, `E_OCR_AUTH_FAILED`, `E_OCR_BILLING_REQUIRED`로 503을
 반환한다. 실제 quota 잔량·결제 설정 확인과 승인 전에는 환경변수를 활성화하거나
 실제 OCR 요청을 보내지 않는다. 이 저장소에는 Mathpix/Pix2Text runtime dependency가 없다.
 

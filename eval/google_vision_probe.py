@@ -76,23 +76,50 @@ def reserve_call_slot(
     run_id: str,
     image_id: str,
     *,
+    policy: "client.MonthlyQuotaPolicy | None" = None,
     ledger_path: Path = BUDGET_LEDGER_PATH,
     lock_path: Path = LOCK_PATH,
     cap: int = CUMULATIVE_CALL_CAP,
+    call_id: str | None = None,
 ) -> int:
     """API 요청 **전에** 호출 슬롯을 예약한다.
 
     - **잠금**으로 동시 실행을 직렬화한다.
     - 예약 기록은 **flush + fsync** 한다 → 프로세스가 죽어도 슬롯이 남는다.
     - 따라서 **timeout·프로세스 중단처럼 과금 여부를 모르는 시도**도 상한에 포함된다.
+    - 월별 내부 상한은 운영자가 확인한 정책(``policy``)이 있어야 검사된다.
+      정책이 없으면 ``BudgetUnverified`` — 실제 호출은 거부된다.
     """
     return client.reserve_call_slot(
         run_id,
         image_id,
+        policy=policy,
         ledger_path=ledger_path,
         lock_path=lock_path,
         cap=cap,
+        call_id=call_id,
     )
+
+
+def _record_outcome(
+    call_id: str,
+    outcome: str,
+    *,
+    reason: str | None = None,
+    ledger: Path = BUDGET_LEDGER_PATH,
+    lock: Path = LOCK_PATH,
+) -> None:
+    """호출 결과를 원장에 남긴다 — **기록 실패가 실행을 막지 않는다**.
+
+    예약 줄이 이미 flush+fsync 되어 있으므로 과금 안전은 확보돼 있다.
+    결과를 못 남기면 상태 조회에서 ``unknown`` 으로 집계될 뿐이다.
+    """
+    try:
+        client.record_outcome(
+            call_id, outcome, reason=reason, ledger_path=ledger, lock_path=lock
+        )
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -159,10 +186,13 @@ def run_probe(
     timeout: float = 60.0,
     token: str | None = None,
     cap: int = CUMULATIVE_CALL_CAP,
+    policy: "client.MonthlyQuotaPolicy | None" = None,
 ) -> dict:
     """Vision OCR 데모를 실행한다.
 
     ``dry_run=True`` (기본) 이면 **호출도 파일 쓰기도 전혀 하지 않는다.**
+    실제 호출(``dry_run=False``)에는 월별 무료 한도 정책이 **필수**다 —
+    확인되지 않았으면 ``BudgetUnverified`` 로 거부한다(fail-closed).
     """
     if max_calls is not None and max_calls <= 0:
         raise ProbeError("max_calls 는 1 이상이어야 한다 (받은 값: {})".format(max_calls))
@@ -192,6 +222,7 @@ def run_probe(
         "language_hint": language_hint,
         "cumulative_cap": cap,
         "cumulative_used_before": used_calls(ledger),
+        "monthly_policy": policy.to_dict() if policy is not None else None,
         "image_ids": [item["id"] for item in selected],
         "results": [],
         "errors": [],
@@ -201,8 +232,15 @@ def run_probe(
         # dry-run 은 **아무것도 쓰지 않고** 호출도 하지 않는다.
         return summary
 
-    used = check_cumulative_budget(len(selected), ledger, cap)
-    summary["cumulative_used_before"] = used
+    # 실제 호출에는 **확인된** 월별 무료 한도 정책이 필수다 (fail-closed).
+    policy = policy or client.MonthlyQuotaPolicy.from_environment()
+    summary["monthly_policy"] = policy.to_dict()
+    budget = client.check_budget(
+        len(selected), policy=policy, ledger_path=ledger, cumulative_cap=cap
+    )
+    summary["month_before"] = budget["month"]
+    summary["monthly_used_before"] = budget["monthly_used"]
+    summary["cumulative_used_before"] = budget["cumulative_used"]
 
     transport = transport or _default_transport
     if token is None:
@@ -244,11 +282,19 @@ def run_probe(
                 continue
 
             # **API 요청 전에** 슬롯을 예약한다 — timeout·중단도 상한에 포함된다.
+            call_id = uuid.uuid4().hex
             try:
                 reserve_call_slot(
-                    run_id, image_id, ledger_path=ledger, lock_path=lock, cap=cap
+                    run_id,
+                    image_id,
+                    policy=policy,
+                    ledger_path=ledger,
+                    lock_path=lock,
+                    cap=cap,
+                    call_id=call_id,
                 )
-            except client.BudgetExceeded as exc:
+            except (client.BudgetExceeded, client.BudgetUnverified,
+                    client.BudgetLedgerCorrupt) as exc:
                 message = client.redact(str(exc), token, [uri])
                 row["error"] = message
                 summary["failed"] += 1
@@ -262,11 +308,15 @@ def run_probe(
                 message = client.redact(
                     "{}: {}".format(type(exc).__name__, exc), token, [uri]
                 )
+                _record_outcome(
+                    call_id, "failed", reason=type(exc).__name__, ledger=ledger, lock=lock
+                )
                 row["error"] = message
                 row["elapsed_seconds"] = 0.0
                 summary["failed"] += 1
                 summary["errors"].append({"id": image_id, "error": message})
             else:
+                _record_outcome(call_id, "succeeded", ledger=ledger, lock=lock)
                 # 파일명은 run_id **와** image_id 로 유일하게 — 같은 run 의
                 # 다른 이미지 응답이 서로 덮어쓰지 않게 한다.
                 stem = "{}__{}".format(client.slug(run_id), client.slug(image_id))
@@ -371,7 +421,13 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI
             language_hint=args.language_hint,
             timeout=args.timeout,
         )
-    except (ProbeError, client.BudgetExceeded, client.VisionError) as exc:
+    except (
+        ProbeError,
+        client.BudgetExceeded,
+        client.BudgetUnverified,
+        client.BudgetLedgerCorrupt,
+        client.VisionError,
+    ) as exc:
         print("데모 실행 전 검증 실패: {}".format(exc))
         return 1
 

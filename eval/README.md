@@ -310,6 +310,14 @@ PHASE 9-9C.8 부터 HTTPS 서명 URL만** 허용한다 — 협의서 §3.3 #10.)
 > **flush + fsync** 한다. **잠금 파일**로 동시 실행을 직렬화한다. 따라서
 > **timeout·프로세스 중단처럼 실제 과금 여부를 모르는 시도도** 슬롯을 남겨 상한에
 > 포함된다.
+>
+> **월별 무료 한도 가드** — 실제 호출(`--run`)에는 운영자가 확인한 월 무료 한도
+> 정책이 **필수**다. `AI1_OCR_FREE_QUOTA_CONFIRMED=1`,
+> `AI1_OCR_BILLING_UNIT=document_text_detection`, `AI1_OCR_MONTHLY_FREE_QUOTA`,
+> `AI1_OCR_MONTHLY_CALL_CAP`(무료 한도보다 작아야 함)이 없거나 안전하지 않으면
+> 예약 단계에서 `BudgetUnverified`로 거부한다. 월 경계는 UTC 1일 00:00이며
+> 이전 달 기록은 삭제하지 않는다. 상태는
+> `.venv\Scripts\python scripts\ocr_usage_status.py`로 조회한다.
 
 > **이 상한의 한계 (중요)** — 40회 상한은 **AI¹ 데모 도구 내부의 제한**이다.
 > **billing account 전체 사용량을 통제하지 않는다.** 같은 billing account 를 쓰는

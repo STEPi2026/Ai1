@@ -21,8 +21,13 @@ from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from app.integration.google_vision_budget import (
+    BILLING_UNIT_DOCUMENT_TEXT_DETECTION,
     CUMULATIVE_CALL_CAP,
     BudgetExceeded,
+    BudgetLedgerCorrupt,
+    BudgetUnverified,
+    MonthlyQuotaPolicy,
+    record_outcome as record_call_outcome,
     reserve_call_slot,
 )
 from app.integration.host_policy import split_allowed_hosts
@@ -257,7 +262,9 @@ class GoogleVisionProvider:
     def __init__(self, client, vision_module, *, language_hint="ko", timeout=8.0,
                  allowed_hosts: tuple[str, ...] | None = None,
                  reserve_slot: Callable[..., int] = reserve_call_slot,
-                 call_cap: int = CUMULATIVE_CALL_CAP):
+                 call_cap: int = CUMULATIVE_CALL_CAP,
+                 monthly_policy: MonthlyQuotaPolicy | None = None,
+                 record_call: Callable[..., None] | None = record_call_outcome):
         self.client = client
         self.vision = vision_module
         self.language_hint = language_hint
@@ -265,6 +272,8 @@ class GoogleVisionProvider:
         self.allowed_hosts = allowed_hosts
         self.reserve_slot = reserve_slot
         self.call_cap = call_cap
+        self.monthly_policy = monthly_policy
+        self.record_call = record_call
 
     @classmethod
     def from_environment(cls, *, env=None, client_factory=None, vision_module=None,
@@ -281,6 +290,14 @@ class GoogleVisionProvider:
             raise OcrNotConfiguredError(
                 "GOOGLE_APPLICATION_CREDENTIALS가 가리키는 파일이 없습니다. 경로를 확인하십시오."
             )
+        # 월 무료 한도가 **확인되지 않았으면 provider 를 만들지 않는다** (fail-closed).
+        # 값은 코드에 하드코딩하지 않고 운영자가 확인해 환경변수로 주입한다.
+        try:
+            monthly_policy = MonthlyQuotaPolicy.from_environment(
+                env, required_unit=BILLING_UNIT_DOCUMENT_TEXT_DETECTION
+            )
+        except BudgetUnverified as exc:
+            raise OcrNotConfiguredError(str(exc)) from None
         try:
             if vision_module is None:
                 from google.cloud import vision as vision_module
@@ -330,6 +347,7 @@ class GoogleVisionProvider:
             allowed_hosts=allowed_hosts,
             reserve_slot=reserve_slot,
             call_cap=call_cap,
+            monthly_policy=monthly_policy,
         )
 
     def recognize(self, request: OcrProviderRequest) -> OcrRawTextResult:
@@ -351,12 +369,21 @@ class GoogleVisionProvider:
 
         image_ref = hashlib.sha256(uri.encode("utf-8")).hexdigest()[:16]
         run_id = "app-{}".format(uuid.uuid4().hex[:12])
+        call_id = uuid.uuid4().hex
         try:
-            self.reserve_slot(run_id, image_ref, cap=self.call_cap)
+            # 누적 40회 + 월별 내부 상한을 **잠금 안에서 함께** 검사한다.
+            self.reserve_slot(
+                run_id,
+                image_ref,
+                cap=self.call_cap,
+                policy=self.monthly_policy,
+                call_id=call_id,
+            )
         except BudgetExceeded as exc:
-            raise OcrUsageLimitError(
-                "Google Vision demo cumulative call cap reached; no additional request was sent."
-            ) from exc
+            raise OcrUsageLimitError(str(exc)) from exc
+        except (BudgetUnverified, BudgetLedgerCorrupt) as exc:
+            # 무료 한도 미확인 또는 원장 손상 — 결과를 만들지 않고 차단한다.
+            raise OcrNotConfiguredError(str(exc)) from None
         except Exception as exc:
             raise OcrNotConfiguredError(
                 "Google Vision free-tier usage guard is unavailable; request refused ({})."
@@ -379,15 +406,36 @@ class GoogleVisionProvider:
                 timeout=self.timeout,
                 retry=None,
             )
-            return _to_raw_result(response, request)
-        except (OcrAuthenticationError, OcrBillingRequiredError, OcrApiDisabledError):
+            result = _to_raw_result(response, request)
+        except (OcrAuthenticationError, OcrBillingRequiredError, OcrApiDisabledError) as exc:
+            self._record_outcome(call_id, "failed", exc)
             raise
-        except OcrNotConfiguredError:
+        except OcrNotConfiguredError as exc:
+            self._record_outcome(call_id, "failed", exc)
             raise
         except OcrProviderError as exc:
+            self._record_outcome(call_id, "failed", exc)
             raise _classify_google_error(exc, uri) from None
         except Exception as exc:
+            self._record_outcome(call_id, "failed", exc)
             raise _classify_google_error(exc, uri) from None
+        else:
+            self._record_outcome(call_id, "succeeded")
+            return result
+
+    def _record_outcome(self, call_id: str, outcome: str, error: BaseException | None = None):
+        """결과를 원장에 남긴다. 실패해도 예약 차감은 이미 끝났으므로 요청은 계속한다."""
+        if self.record_call is None:
+            return
+        try:
+            self.record_call(
+                call_id,
+                outcome,
+                reason=type(error).__name__ if error is not None else None,
+            )
+        except Exception:
+            # 예약 기록이 과금 안전을 담당한다 — 결과 기록 실패로 응답을 바꾸지 않는다.
+            pass
 
 
 def _classify_google_error(error: BaseException, image_reference: str):

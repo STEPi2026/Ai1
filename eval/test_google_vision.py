@@ -25,6 +25,24 @@ import google_vision_probe as probe  # noqa: E402
 
 FAKE_TOKEN = "ya29.FAKE-ACCESS-TOKEN-SHOULD-NEVER-APPEAR"
 
+#: 테스트용 정책 env — 실제 무료 한도 값이 아니다. 코드는 기본값을 갖지 않으므로
+#: 실제 호출 경로 테스트에는 이렇게 "확인된" 값을 주입해야 한다.
+TEST_POLICY_ENV = {
+    "AI1_OCR_BILLING_UNIT": "document_text_detection",
+    "AI1_OCR_MONTHLY_FREE_QUOTA": "100",
+    "AI1_OCR_MONTHLY_CALL_CAP": "10",
+    "AI1_OCR_FREE_QUOTA_CONFIRMED": "1",
+}
+
+#: 이전 달(월별 집계에서 제외)을 흉내 내는 예약 타임스탬프.
+PAST_TIMESTAMP = "2020-01-01T00:00:00Z"
+
+
+@pytest.fixture(autouse=True)
+def _quota_env(monkeypatch):
+    for key, value in TEST_POLICY_ENV.items():
+        monkeypatch.setenv(key, value)
+
 #: 서명·토큰이 들어간 presigned URL (비노출 검증용).
 PRESIGNED_URL = (
     "https://storage.googleapis.com/demo-bucket/E01.jpg"
@@ -594,10 +612,14 @@ def test_slot_is_reserved_before_the_request(tmp_path):
     ledger = local / "call_budget.jsonl"
     assert ledger.exists()
     lines = [l for l in ledger.read_text(encoding="utf-8").splitlines() if l.strip()]
-    assert len(lines) == 1
-    entry = json.loads(lines[0])
-    assert entry["status"] == "reserved"
-    assert entry["id"] == "G01"
+    # 예약 1줄 + 결과(failed) 1줄 — 결과 기록은 별도 줄이다.
+    entries = [json.loads(line) for line in lines]
+    reservations = [entry for entry in entries if entry["kind"] == "reservation"]
+    outcomes = [entry for entry in entries if entry["kind"] == "outcome"]
+    assert len(reservations) == 1
+    assert reservations[0]["status"] == "reserved"
+    assert reservations[0]["id"] == "G01"
+    assert [entry["status"] for entry in outcomes] == ["failed"]
     assert probe.used_calls(ledger) == 1
 
 
@@ -607,8 +629,12 @@ def test_cumulative_cap_is_enforced(tmp_path):
     ledger = local / "call_budget.jsonl"
     ledger.parent.mkdir(parents=True, exist_ok=True)
     ledger.write_text(
-        "".join('{"run_id":"r","id":"G%02d","status":"reserved"}\n' % i
-                for i in range(38)),
+        "".join(
+            '{"kind":"reservation","call_id":"c%02d","run_id":"r","id":"G%02d",'
+            '"reserved_at":"%s","status":"reserved"}\n'
+            % (i, i, PAST_TIMESTAMP)
+            for i in range(38)
+        ),
         encoding="utf-8",
     )
     transport = FakeTransport()
@@ -625,8 +651,12 @@ def test_cumulative_cap_allows_calls_within_budget(tmp_path):
     ledger = local / "call_budget.jsonl"
     ledger.parent.mkdir(parents=True, exist_ok=True)
     ledger.write_text(
-        "".join('{"run_id":"r","id":"G%02d","status":"reserved"}\n' % i
-                for i in range(38)),
+        "".join(
+            '{"kind":"reservation","call_id":"c%02d","run_id":"r","id":"G%02d",'
+            '"reserved_at":"%s","status":"reserved"}\n'
+            % (i, i, PAST_TIMESTAMP)
+            for i in range(38)
+        ),
         encoding="utf-8",
     )
     transport = FakeTransport()

@@ -35,15 +35,34 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from app.integration.google_vision_budget import (  # noqa: E402
+    MonthlyQuotaPolicy,
     BudgetExceeded,
+    BudgetLedgerCorrupt,
+    BudgetUnverified,
+    check_budget,
     check_cumulative_budget,
+    month_usage,
+    record_outcome,
     reserve_call_slot,
+    status,
     used_calls,
 )
 
 # These shared budget helpers are intentionally public through this module:
 # the standalone probe and its existing tests use `client.BudgetExceeded`.
-__all__ = ["BudgetExceeded", "check_cumulative_budget", "reserve_call_slot", "used_calls"]
+__all__ = [
+    "MonthlyQuotaPolicy",
+    "BudgetExceeded",
+    "BudgetLedgerCorrupt",
+    "BudgetUnverified",
+    "check_budget",
+    "check_cumulative_budget",
+    "month_usage",
+    "record_outcome",
+    "reserve_call_slot",
+    "status",
+    "used_calls",
+]
 
 VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate"
 

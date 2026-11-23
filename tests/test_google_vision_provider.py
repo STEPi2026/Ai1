@@ -112,14 +112,31 @@ def _isolate_provider_env(monkeypatch):
     reset_ocr_provider()
 
 
+def _quota_env(**overrides):
+    """운영자가 확인한 값을 흉내 내는 테스트용 정책 env.
+
+    실제 값은 코드·테스트에 하드코딩하지 않는다 — 여기 값은 테스트 픽스처일 뿐이다.
+    """
+    env = {
+        "AI1_OCR_BILLING_UNIT": "document_text_detection",
+        "AI1_OCR_MONTHLY_FREE_QUOTA": "100",
+        "AI1_OCR_MONTHLY_CALL_CAP": "10",
+        "AI1_OCR_FREE_QUOTA_CONFIRMED": "1",
+    }
+    env.update(overrides)
+    return env
+
+
 def _provider(client=None, *, language_hint="ko", reserve_slot=None,
-             allowed_hosts=None):
+             allowed_hosts=None, record_call=None):
     return GoogleVisionProvider(
         client or FakeVisionClient(),
         FakeVisionTypes,
         language_hint=language_hint,
         allowed_hosts=allowed_hosts,
         reserve_slot=reserve_slot or (lambda *args, **kwargs: 1),
+        # 테스트가 실제 원장/잠금 파일에 쓰지 않도록 결과 기록을 끈다.
+        record_call=record_call,
     )
 
 
@@ -220,6 +237,7 @@ def test_provider_uses_google_application_credentials_path_without_reading_key(t
         env={
             "GOOGLE_APPLICATION_CREDENTIALS": str(credential_path),
             "GOOGLE_VISION_LANGUAGE_HINT": "ko",
+            **_quota_env(),
         },
         client_factory=lambda: created.append("constructed") or fake_client,
         vision_module=FakeVisionTypes,
@@ -241,7 +259,10 @@ def test_provider_maps_client_initialization_authentication_error(tmp_path):
 
     with pytest.raises(OcrAuthenticationError, match="service-account JSON"):
         GoogleVisionProvider.from_environment(
-            env={"GOOGLE_APPLICATION_CREDENTIALS": str(credential_path)},
+            env={
+                "GOOGLE_APPLICATION_CREDENTIALS": str(credential_path),
+                **_quota_env(),
+            },
             client_factory=fail_factory,
             vision_module=FakeVisionTypes,
         )
@@ -325,6 +346,7 @@ def test_allowed_hosts_env_is_parsed_from_environment(tmp_path):
             "GOOGLE_APPLICATION_CREDENTIALS": str(credential_path),
             ALLOWED_HOSTS_ENV: " backend.example.invalid , other.example ,",
             "GOOGLE_VISION_TIMEOUT_SECONDS": "25",
+            **_quota_env(),
         },
         client_factory=lambda: FakeVisionClient(),
         vision_module=FakeVisionTypes,
@@ -357,6 +379,7 @@ def test_invalid_allowed_hosts_fail_closed_at_configuration(tmp_path, value):
             env={
                 "GOOGLE_APPLICATION_CREDENTIALS": str(credential_path),
                 ALLOWED_HOSTS_ENV: value,
+                **_quota_env(),
             },
             client_factory=lambda: FakeVisionClient(),
             vision_module=FakeVisionTypes,
@@ -391,6 +414,7 @@ def test_timeout_above_25_seconds_fails_closed(tmp_path):
             env={
                 "GOOGLE_APPLICATION_CREDENTIALS": str(credential_path),
                 "GOOGLE_VISION_TIMEOUT_SECONDS": "30",
+                **_quota_env(),
             },
             client_factory=lambda: FakeVisionClient(),
             vision_module=FakeVisionTypes,
@@ -409,6 +433,7 @@ def test_non_finite_timeout_fails_closed(tmp_path, value):
             env={
                 "GOOGLE_APPLICATION_CREDENTIALS": str(credential_path),
                 "GOOGLE_VISION_TIMEOUT_SECONDS": value,
+                **_quota_env(),
             },
             client_factory=lambda: FakeVisionClient(),
             vision_module=FakeVisionTypes,
