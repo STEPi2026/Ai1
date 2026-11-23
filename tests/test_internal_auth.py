@@ -41,6 +41,7 @@ PROTECTED_CASES = [
     ("GET", "/api/v1/attempts/A1/analyses", None),
     ("GET", "/api/v1/attempts/A1/analyses/X1", None),
     ("GET", "/api/v1/students/S1/history", None),
+    ("GET", "/api/v1/students/S1/skills", None),
     ("GET", "/api/v1/students/S1/misconceptions/top", None),
     (
         "POST",

@@ -376,4 +376,5 @@ def test_route_count_unchanged():
         "/api/v1/attempts/{attempt_id}/analyses/{analysis_id}",
         "/api/v1/students/{student_id}/history",
         "/api/v1/students/{student_id}/misconceptions/top",
+        "/api/v1/students/{student_id}/skills",
     }

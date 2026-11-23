@@ -4,6 +4,8 @@ import threading
 import unicodedata
 from collections import OrderedDict
 
+from app.taxonomy import is_tracking_skill
+
 # 오개념 트리 노드 정의는 3주차까지 동결 (기획서 5.4)
 SKILL_LINEAR = "linear_equation"
 SKILL_ARITHMETIC = "arithmetic"
@@ -142,6 +144,8 @@ class RuleStateEngine:
         self._lock = threading.RLock()
         self._streak: dict[tuple[str, str], int] = {}
         self._state: dict[tuple[str, str], str] = {}
+        # 학생별 skill 인덱스 — snapshot() 이 전체 state 를 훑지 않게 한다.
+        self._by_student: dict[str, set[str]] = {}
         self._lru = _StudentLru(max_students)
 
     def _forget(self, student_id: str) -> None:
@@ -150,6 +154,7 @@ class RuleStateEngine:
             del self._state[key]
         for key in [k for k in self._streak if k[0] == student_id]:
             del self._streak[key]
+        self._by_student.pop(student_id, None)
         self._lru.forget(student_id)
 
     def update(self, student_id: str, skill: str, outcome: str) -> str:
@@ -166,6 +171,7 @@ class RuleStateEngine:
                 self._streak[key] = 0
                 state = _ERROR_TYPE_TO_STATE.get(outcome, _FALLBACK_ERROR_STATE)
             self._state[key] = state
+            self._by_student.setdefault(student_id, set()).add(skill)
             return state
 
     def state(self, student_id: str, skill: str) -> str:
@@ -190,6 +196,24 @@ class RuleStateEngine:
         with self._lock:
             return _MASTERY_BY_STATE[self._state.get((student_id, skill), STATE_LEARNING)]
 
+    def snapshot(self, student_id: str) -> dict[str, tuple[str, float]]:
+        """해당 학생이 **관측된** skill -> (state, mastery). 읽기 전용.
+
+        - taxonomy 전체를 나열하지 않는다 — 기록이 없는 skill 은 반환하지 않는다.
+        - `_lru.touch()` 를 호출하지 않는다 (조회가 LRU 순서를 바꾸면 안 됨).
+        - 그룹 노드(bkt_eligible=false) 등 비추적 skill 은 방어적으로 제외한다.
+        """
+        with self._lock:
+            result: dict[str, tuple[str, float]] = {}
+            for skill in self._by_student.get(student_id, ()):
+                if not is_tracking_skill(skill):
+                    continue
+                state = self._state.get((student_id, skill))
+                if state is None:
+                    continue
+                result[skill] = (state, _MASTERY_BY_STATE[state])
+            return result
+
     def tracked_students(self) -> list[str]:
         """현재 추적 중인 학생 목록 (진단/테스트용)."""
         with self._lock:
@@ -199,6 +223,7 @@ class RuleStateEngine:
         with self._lock:
             self._streak.clear()
             self._state.clear()
+            self._by_student.clear()
             self._lru.clear()
 
 
@@ -237,12 +262,15 @@ class BKTEngine:
         self.learning_threshold = learning_threshold
         self._lock = threading.RLock()
         self._p: dict[tuple[str, str], float] = {}
+        # 학생별 skill 인덱스 — snapshot() 이 전체 _p 를 훑지 않게 한다.
+        self._by_student: dict[str, set[str]] = {}
         self._lru = _StudentLru(max_students)
 
     def _forget(self, student_id: str) -> None:
         """학생 한 명의 p_known을 통째로 제거한다 (부분 삭제 금지)."""
         for key in [k for k in self._p if k[0] == student_id]:
             del self._p[key]
+        self._by_student.pop(student_id, None)
         self._lru.forget(student_id)
 
     def update(self, student_id: str, skill: str, outcome: str) -> float:
@@ -264,6 +292,7 @@ class BKTEngine:
             # 값域 고정
             p_next = min(max(p_next, 0.0), 1.0)
             self._p[(student_id, skill)] = p_next
+            self._by_student.setdefault(student_id, set()).add(skill)
             return p_next
 
     def mastery(self, student_id: str, skill: str) -> float:
@@ -271,12 +300,35 @@ class BKTEngine:
             return self._p.get((student_id, skill), self.p_init)
 
     def state(self, student_id: str, skill: str) -> str:
-        p = self.mastery(student_id, skill)
+        return self._state_for(self.mastery(student_id, skill))
+
+    def _state_for(self, p: float) -> str:
+        """p_known -> state. state()/snapshot() 이 같은 임계값을 쓰도록 단일화."""
         if p >= self.mastered_threshold:
             return STATE_MASTERED
         if p >= self.learning_threshold:
             return STATE_LEARNING
         return STATE_NEEDS_PRACTICE
+
+    def snapshot(self, student_id: str) -> dict[str, tuple[str, float]]:
+        """해당 학생이 **관측된** skill -> (state, mastery). 읽기 전용.
+
+        - taxonomy 전체를 나열하지 않는다 — 기록이 없는 skill 은 반환하지 않는다
+          (관측 전 p_init 을 0으로 지어내지 않는다).
+        - `_lru.touch()` 를 호출하지 않는다 (조회가 LRU 순서를 바꾸면 안 됨).
+        - state 는 기존 임계값(mastered_threshold / learning_threshold)으로 계산한다.
+        - 그룹 노드(bkt_eligible=false) 등 비추적 skill 은 방어적으로 제외한다.
+        """
+        with self._lock:
+            result: dict[str, tuple[str, float]] = {}
+            for skill in self._by_student.get(student_id, ()):
+                if not is_tracking_skill(skill):
+                    continue
+                p = self._p.get((student_id, skill))
+                if p is None:
+                    continue
+                result[skill] = (self._state_for(p), p)
+            return result
 
     def update_from_observation(
         self, student_id: str, skill: str, outcome: str, error_type: str | None = None
@@ -296,4 +348,5 @@ class BKTEngine:
     def reset(self) -> None:
         with self._lock:
             self._p.clear()
+            self._by_student.clear()
             self._lru.clear()

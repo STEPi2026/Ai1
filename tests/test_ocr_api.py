@@ -946,6 +946,7 @@ def test_ocr_route_added_without_changing_existing_routes():
         "/api/v1/attempts/{attempt_id}/analyses",
         "/api/v1/attempts/{attempt_id}/analyses/{analysis_id}",
         "/api/v1/students/{student_id}/history",
+        "/api/v1/students/{student_id}/skills",
         "/api/v1/students/{student_id}/misconceptions/top",
     }
 

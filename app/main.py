@@ -34,6 +34,7 @@ from app.pipeline.analyzer import (
     _ANALYSIS_STATUS_BY_ERROR,
     AnalysisError,
     analyze,
+    get_engine,
 )
 from app.pipeline.knowledge import InvalidStudentIdError, validate_student_id
 from app.pipeline.repository import AnalysisRecord, RepositoryError, get_repository
@@ -60,6 +61,8 @@ from app.schemas import (
     StepView,
     StudentHistoryItem,
     StudentHistoryResponse,
+    StudentSkillState,
+    StudentSkillsResponse,
 )
 from app.taxonomy import misconception_by_id
 
@@ -1203,4 +1206,50 @@ def get_student_top_misconceptions(
         order=_MISCONCEPTION_ORDER,
         distinct_misconception_count=len(ranked),
         items=items,
+    )
+
+
+# ===========================================================================
+# 학생 Skill 숙련도 목록 (명세 웹 r26/r27 — 개념 영역별 숙련도 차트)
+# 읽기 전용. Knowledge State 엔진이 실제로 관측한 Skill 만 반환한다.
+# taxonomy 전체를 나열하거나, 관측 없는 Skill 을 0으로 지어내지 않는다.
+# weakness_score 계산은 Backend 책임이라 여기서 만들지 않는다.
+# ===========================================================================
+
+
+@app.get(
+    "/api/v1/students/{student_id}/skills",
+    response_model=StudentSkillsResponse,
+    dependencies=_INTERNAL_AUTH_DEPS,
+)
+def get_student_skill_states(
+    student_id: str,
+    engine: str = Query(
+        "rule", description="Knowledge State 엔진 (rule | bkt). 분석 요청과 같은 이름 규칙"
+    ),
+) -> StudentSkillsResponse:
+    """학생이 **관측된** Skill 의 현재 state/mastery 목록 (명세 웹 r26/r27).
+
+    - 기록이 없는 학생은 200 + 빈 목록(count=0)이다 (GET /history 와 같은 정책).
+    - 관측 기록이 없는 Skill 은 반환하지 않는다 — taxonomy 전체를 나열하지 않는다.
+    - engine 별 상태를 섞지 않는다. 응답에 사용한 engine 을 명시한다.
+    - `skill_id` 오름차순 고정. 그룹 노드(bkt_eligible=false)는 포함하지 않는다.
+    - **읽기 전용**: 상태 갱신·LRU 변경·저장소 쓰기 없음. weakness_score·추세·
+      타임스탬프는 데이터가 없어 계산하지 않는다(Backend 책임).
+    """
+    normalized = _validated_student_id(student_id)
+    try:
+        kb = get_engine(engine)
+    except AnalysisError as exc:
+        _raise_http(exc)
+    snapshot = kb.snapshot(normalized)
+    skills = [
+        StudentSkillState(skill_id=skill_id, state=state, mastery=mastery)
+        for skill_id, (state, mastery) in sorted(snapshot.items())
+    ]
+    return StudentSkillsResponse(
+        student_id=normalized,
+        engine=engine,
+        skills=skills,
+        count=len(skills),
     )

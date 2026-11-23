@@ -505,6 +505,29 @@ class MisconceptionTopResponse(BaseModel):
     items: list[MisconceptionTopItem] = Field(default_factory=list)
 
 
+class StudentSkillState(BaseModel):
+    """학생 Skill 숙련도 1건 (명세 웹 r26/r27)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    skill_id: str = Field(..., description="Knowledge State 가 관측한 taxonomy skill_id")
+    state: Literal["mastered", "learning", "needs_practice"]
+    mastery: float = Field(..., ge=0.0, le=1.0, description="0~1 (rule=상태 대표값 / bkt=p_known)")
+
+
+class StudentSkillsResponse(BaseModel):
+    """GET /api/v1/students/{student_id}/skills 응답. 읽기 전용 스냅샷."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    student_id: str
+    engine: Literal["rule", "bkt"] = Field(..., description="상태를 읽은 Knowledge State 엔진")
+    skills: list[StudentSkillState] = Field(
+        default_factory=list, description="관측된 Skill 만. skill_id 오름차순"
+    )
+    count: int = Field(..., ge=0, description="반환된 Skill 수")
+
+
 class AnalyzeSolutionResponse(BaseModel):
     """AI① 최소 계약 + 확장 필드 (하위호환)."""
 

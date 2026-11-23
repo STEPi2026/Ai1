@@ -27,7 +27,7 @@
 | 앱 r57 | 재촬영 제출 시 회차 연결 | **attempt_id / 분석 이력 ID** | O | `POST /api/v1/attempts/{attempt_id}/analyze` + `analysis_id`. **멱등(PHASE 8-4): 동일 제출 재전송은 기존 `analysis_id` 를 그대로 반환** |
 | 앱 r61/r62 | 오답 노트, 오답 상세 | 오답 목록 + 원본 분석 조회 | O | `LearningRepository`(in-memory) + `errors[]`·`step_list` 응답 + **PHASE 8-5 `GET /api/v1/attempts/{id}/analyses[/{analysis_id}]`** (저장 시점 스냅샷, 0건/미존재 구분). 학생 단위 통합 이력은 미구현 |
 | 앱 r24~r27 | 진단평가 → 최초 Knowledge State | **초기 상태 시드** | - | `rule`: 기본 `learning`, `bkt`: `p_init=0.3` 암묵값만 |
-| 웹 r26/r27 | 개념 영역별 숙련도 차트 | skill별 mastery 조회 | P | 단일 skill만 반환, 목록 API 없음 |
+| 웹 r26/r27 | 개념 영역별 숙련도 차트 | skill별 mastery 조회 | O | **`GET /api/v1/students/{student_id}/skills`** (engine=rule\|bkt, 관측된 Skill만, skill_id 오름차순). 비고: AI① 로컬 in-memory 상태 기준이며 Backend 최종 상태(MySQL `student_states`)가 아니다 |
 | 웹 r30 | 반복 오개념 TOP 5 | 오개념 누적 집계 | P | 학생 단위 state만, 오개념 이력 미보존 |
 | 웹 r32 | AI① 학습 분석 카드 | 응답 JSON | O | `POST /analyze-solution` |
 | 웹 r37/r38 | 손글씨 풀이 이미지 + 오류 step 하이라이트 | 최초 오류 step | P | `error_step` (이미지 자체는 attempt) |

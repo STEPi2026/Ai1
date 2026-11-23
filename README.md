@@ -116,7 +116,7 @@ tests/
 
 ## API
 
-라우트 8개. `/analyze-solution`(Legacy)과 Attempt API 는 응답 계약이 서로 다르며,
+라우트 9개. `/analyze-solution`(Legacy)과 Attempt API 는 응답 계약이 서로 다르며,
 새 Backend adapter 를 붙일 때 Legacy 응답은 변경하지 않는다.
 
 | Method | 경로 | 설명 |
@@ -128,6 +128,7 @@ tests/
 | GET | `/api/v1/attempts/{attempt_id}/analyses` | Attempt 분석 이력 |
 | GET | `/api/v1/attempts/{attempt_id}/analyses/{analysis_id}` | 저장 시점 분석 상세 |
 | GET | `/api/v1/students/{student_id}/history` | 학생 이력 (페이지네이션·기간 필터) |
+| GET | `/api/v1/students/{student_id}/skills` | 학생 Skill 숙련도 목록 (웹 r26/r27, 읽기 전용) |
 | GET | `/api/v1/students/{student_id}/misconceptions/top` | 반복 오개-concept TOP |
 
 ### `GET /health`
@@ -343,6 +344,38 @@ JSON으로 출력한다. API 비활성화·인증·billing 설정 오류는 각�
 OCR 응답 → Attempt 분석 요청의 변환 규칙(Backend responsibility)은
 `docs/AI1_명세서_대조표.md` §14.18 에 있고, `tests/test_ocr_analysis_handoff.py` 가
 2단계 흐름을 fake provider 로 검증한다.
+
+### `GET /api/v1/students/{student_id}/skills`
+
+학생이 **관측된** Skill 의 현재 state/mastery 목록 (명세 웹 r26/r27 숙련도 차트).
+Knowledge State 엔진이 실제로 관측한 Skill 만 반환하며, taxonomy 전체를 나열하거나
+관측 없는 Skill 을 0으로 채우지 않는다. **읽기 전용** — 상태·LRU 를 바꾸지 않는다.
+
+- `engine`: `rule`(기본) | `bkt`. 엔진별 상태를 섞지 않으며 응답에 사용한 engine 을 명시한다.
+- 기록이 없는 학생은 `200` + `skills: []`, `count: 0` (404 아님).
+- `skill_id` 오름차순 고정. 그룹 노드(`bkt_eligible=false`)는 포함하지 않는다.
+- `weakness_score`·추세·타임스탬프는 계산하지 않는다 (Backend 책임).
+
+```json
+GET /api/v1/students/S1/skills?engine=rule
+{
+  "student_id": "S1",
+  "engine": "rule",
+  "skills": [
+    { "skill_id": "linear_equation", "state": "learning", "mastery": 0.6 }
+  ],
+  "count": 1
+}
+```
+
+기록 없는 학생:
+
+```json
+{ "student_id": "NOBODY", "engine": "rule", "skills": [], "count": 0 }
+```
+
+알 수 없는 engine 은 `422 E_UNKNOWN_ENGINE`, 잘못된 `student_id`(공백·64자 초과)는
+`422 E_INVALID_STUDENT_ID` 이다.
 
 ## 에러 코드
 
