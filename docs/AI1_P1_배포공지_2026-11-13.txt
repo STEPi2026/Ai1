@@ -40,8 +40,8 @@ AI① 배포 완료했습니다. Backend 전송 ON 은 아래 확인 후 진행�
 
 6) OpenAPI 스키마 스냅샷
    서버는 보안상 /openapi.json·/docs 를 비활성(404)합니다. 스키마는 저장소 파일로 확인해 주세요.
-   - 파일: docs/AI1_openapi.json
-   - 재생성:
-     .venv\Scripts\python -c "import json; from app.main import app; open('docs/AI1_openapi.json','w',encoding='utf-8',newline='\n').write(json.dumps(app.openapi(),ensure_ascii=False,indent=2,sort_keys=True)+'\n')"
+   - 파일: docs/AI1_openapi_2026-11-17.json (2026-11-23 이후 과거 스냅샷으로 보존)
+   - 최신 스키마 생성:
+     .venv\Scripts\python scripts\export_contract.py --out-dir docs/AI2_전달_<날짜>
    - 포함 확인: AnalyzeSolutionRequest.problem_type / target_form,
      AnalyzeAttemptRequest.problem_type / target_form

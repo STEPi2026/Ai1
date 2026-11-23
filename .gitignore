@@ -37,3 +37,6 @@ ngrok.log
 ai1_internal_key.txt
 ai1_*key*.txt
 *.local.ps1
+
+# AI2 delivery package outputs (git add -f if needed)
+docs/AI2_전달_*/

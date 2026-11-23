@@ -1,7 +1,7 @@
 # AI① ↔ STEPi 기능명세서 대조표
 
 원본: `docs/STEPi_기능명세서_원본.md` (xlsx 파싱본)
-코드 기준: `app/`, `data/` (2026-11-08 실행, pytest 1713 passed, 1 warning)
+코드 기준: `app/`, `data/` (2026-11-23 실행, pytest 1916 passed, 1 warning)
 
 상태: `O` 구현됨 · `P` 부분 · `-` 미구현(필요) · `X` AI① 책임 아님
 
@@ -1496,7 +1496,7 @@ S1-2·S2-3 착수 전 환경변수 6종을 네트워크 0회·값 비노출로 �
 
 ### 14.16 상태
 
-- pytest **1713 passed, 1 warning** (2026-11-08 실행). 이전 단계 기록: PHASE 9-6 1020 passed, PHASE 9-7 1147 passed, PHASE 9-7.1 1186 passed, PHASE 9-7.3 1224 passed, PHASE 9-8A 1280 passed, PHASE 9-8A.2 1318 passed, PHASE 9-9C.4 1602 passed, PHASE 9-9C.7 1603 passed, PHASE 9-9C.8 1642 passed, PHASE 9-9C.9A 1676 passed.
+- pytest **1916 passed, 1 warning** (2026-11-23 실행). 이전 단계 기록: PHASE 9-6 1020 passed, PHASE 9-7 1147 passed, PHASE 9-7.1 1186 passed, PHASE 9-7.3 1224 passed, PHASE 9-8A 1280 passed, PHASE 9-8A.2 1318 passed, PHASE 9-9C.4 1602 passed, PHASE 9-9C.7 1603 passed, PHASE 9-9C.8 1642 passed, PHASE 9-9C.9A 1676 passed.
 - **확정** 으로 표시한 항목은 코드 구현·Backend 승인분·AI¹ 정책 등 이미 정해진 사실입니다.
 - **14.1~14.5·14.10~14.15 의 Backend 계약은 전부 잠정(협의 초안)입니다.** 14.12 표에서
   **승인** 은 `distribution`·`2.1` 두 건뿐이고, 나머지는 provisional(미승인) 또는 미매핑입니다.

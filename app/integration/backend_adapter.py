@@ -22,7 +22,7 @@
     - ``MIS-2-003`` : 일반 ``arithmetic_slip`` 에 자동 부여하지 않는다.
       계산 오류는 오개-concept을 부여하지 않는 것이 AI¹ 정책이다.
     - ``MIS-2-004`` (division by zero) : runtime detector 가 없다. 출력이 아니라
-      협�� 아이템이며, 코드가 나오면 그 detector 가 새로 추가된 것이다.
+      협의 아이템이며, 코드가 나오면 그 detector 가 새로 추가된 것이다.
     - ``STP-*``    : AI¹ 은 Concept/STP ID 를 생성하지 않는다. 공식 Skill code
       로 Concept 을 연결하는 책임은 Backend 에 있다.
 

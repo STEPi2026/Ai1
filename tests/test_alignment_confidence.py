@@ -100,7 +100,7 @@ def test_non_swap_ambiguous_step_still_none():
 
 
 def test_duplicate_canonical_solution_steps_still_ambiguous():
-    """정답에 'x=6' 과 '6=x' 가 모두 있으면 어느 ���단자인지 확정할 수 없다 → None."""
+    """정답에 'x=6' 과 '6=x' 가 모두 있으면 어느 답안에 대응하는지 확정할 수 없다 → None."""
     dup = CorrectSolution(
         solution_id="SOL-DUP",
         problem_id="P-C",

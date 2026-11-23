@@ -1,7 +1,7 @@
 # AI① 배포 체크리스트
 
 > 대상: `C:\Users\choi\Desktop\learning-intelligence` (AI① Learning Intelligence)
-> 기준: 2026-11-23 · `main` · pytest 1904 passed · pyflakes 0
+> 기준: 2026-11-23 · `main` · pytest 1916 passed · pyflakes 0
 > 원칙: **값이 아니라 이름만** 확인한다. 환경변수 값·API 키·토큰·서비스 계정 JSON
 > 내용은 화면·로그·문서에 출력하지 않는다.
 
