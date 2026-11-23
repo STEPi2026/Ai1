@@ -428,6 +428,8 @@ def test_response_field_set_is_stable():
         # PHASE 9-7 additive (Backend 전달 경계)
         "misconception_tag", "official_skill_codes", "official_misconception_codes",
         "provisional_skill_codes", "provisional_misconception_codes",
+        # final_answer_present (응답 전용 additive — 최종 답 제시 여부)
+        "final_answer_present",
     }
 
 

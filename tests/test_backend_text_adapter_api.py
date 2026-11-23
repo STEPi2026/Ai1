@@ -574,12 +574,12 @@ def test_attempt_response_field_set_is_stable_plus_backend_codes():
         "unrecognized", "step_list", "errors", "observations", "misconception_tags",
         "states", "mastery_by_skill",
     }
-    assert set(body) == legacy_fields | BACKEND_CODES_FIELDS
-    assert len(body) == 31
+    assert set(body) == legacy_fields | BACKEND_CODES_FIELDS | {"final_answer_present"}
+    assert len(body) == 32
 
 
 def test_schema_model_field_count_matches_response():
-    assert len(AnalyzeAttemptResponse.model_fields) == 31
+    assert len(AnalyzeAttemptResponse.model_fields) == 32
 
 
 def test_legacy_analyze_solution_still_16_fields_without_codes():

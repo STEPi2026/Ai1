@@ -203,13 +203,14 @@ Knowledge Observation 을 중복 반영하지 않는다. 다른 본문은 409 `E
 | `correct_solution` | object? | 정답 풀이 (미등록 문제 최초 등록용) |
 | `engine` | `rule` \| `bkt` | Knowledge State 엔진 |
 
-응답 필드 (`AnalyzeAttemptResponse`) — 기존 26개 + Backend 전달용 additive 5개:
+응답 필드 (`AnalyzeAttemptResponse`) — 기존 26개 + Backend 전달용 additive 5개 + 응답 전용 additive 1개:
 
 | 필드 | 설명 |
 |---|---|
 | `misconception_tag` | 앱 r48 호환 단수 필드. 대표 오류(가장 낮은 `step_no`)의 오개념 ID |
 | `official_skill_codes` / `official_misconception_codes` | Backend **승인** 코드. 없으면 `[]` |
 | `provisional_skill_codes` / `provisional_misconception_codes` | **후보(미승인)** 코드. 없으면 `[]` |
+| `final_answer_present` | 마지막 답 블록이 최종 답을 모두 포함하는지. `true`=모두 포함, `false`=최종 답 아님 확정(중간식·미완성·일부 해), `null`=판단 불가. **`correct` 와 독립** — 틀린 최종 답이면 `true`+`correct=false`. `analysis_status != ANALYZED` 면 항상 `null`. 해를 여러 줄로 쓴 답 블록은 서로 다른 값의 개수로 센다 |
 
 기존 `skill` · `skill_ids` · `misconception_id` · `misconception_ids` ·
 `misconception_tags` 는 taxonomy ID 그대로 유지한다(Backend 코드로 덮어쓰지 않는다).

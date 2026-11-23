@@ -312,6 +312,8 @@ def test_api_response_fields_and_meaning_unchanged():
         "misconception_id", "confidence", "steps_latex", "valid", "unrecognized",
         "skills", "skill_ids", "error_subtype", "misconception_ids",
         "analysis_status",
+        # 응답 전용 additive (최종 답 제시 여부)
+        "final_answer_present",
     }
     assert api["correct"] is False
     assert api["error_step"] == 2

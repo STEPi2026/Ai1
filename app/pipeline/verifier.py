@@ -39,6 +39,11 @@ class Verdict:
     review_reasons: list[str] = field(default_factory=list)
     # 마지막 줄이 target_form 을 만족하지 못한 단계(0-based). 없으면 None.
     form_violation_index: int | None = None
+    # --- 최종 답 제시 여부 (응답 전용, additive) ---
+    # true=마지막 단계가 문제가 요구한 최종 답을 모두 포함, false=최종 답 아님
+    # 확정, None=판단 불가(대상 변수 불명·target_form 없음·인식 불확실 등).
+    # correct 와 독립이다. 판단할 수 없으면 False 가 아니라 None 으로 남긴다.
+    final_answer_present: bool | None = None
 
 
 def _free_symbols(*nodes) -> set:
@@ -83,6 +88,102 @@ def _node_too_complex(node) -> bool:
         except Exception:
             return True
     return _too_complex(node[1])
+
+
+# ---------------------------------------------------------------------------
+# 최종 답 제시 여부 (final_answer_present) — 응답 전용 additive 판정.
+# 값의 정오는 보지 않는다(그것은 correct 의 몫). '마지막 줄이 문제가 요구한
+# 최종 답을 모두 담는가'만 형태·개수로 판정한다. 판단 불가는 None (ADR-03).
+# ---------------------------------------------------------------------------
+
+def _solution_value(node, target):
+    """단계가 'target = 상수' (또는 '상수 = target') 꼴이면 그 상수값을 돌려준다.
+
+    해 진술이 아니면 None. 상수 쪽에 변수가 남아 있으면(x=x, x=y, x=2y)
+    해 하나를 확정한 진술이 아니므로 None 이다.
+    """
+    if node is None or node[0] != "eq":
+        return None
+    lhs, rhs = node[1], node[2]
+    if lhs == target and not rhs.free_symbols:
+        return rhs
+    if rhs == target and not lhs.free_symbols:
+        return lhs
+    return None
+
+
+def _final_answer_present_equation(
+    problem, parsed: list, budget: _SolveBudget | None
+) -> bool | None:
+    """[equation] 마지막 답 블록이 해 진술인지 + 해 개수가 일치하는지.
+
+    - 문제식 자유변수(target)가 정확히 1개일 때만 판정. 0개·2개 이상은 None.
+    - 마지막 단계가 unrecognized/비어 있으면 None. 판단 대상은 뒤에서부터
+      스캔한 '마지막 인식 단계'이지만, 목록의 마지막 요소가 인식되지 않았다면
+      그 뒤에 내용이 있을 수 있으므로 단정하지 않는다.
+    - 마지막 단계가 항등식/모순식(3=3, 0=5)이면 False.
+    - 2x=6 처럼 아직 정리되지 않은 동치식이면 False (correct=true 여도).
+    - 해를 여러 줄로 나눠 쓴 경우(x=3 / x=-3)를 위해, 마지막부터 연속된
+      'target = 상수' 줄 묶음을 최종 답 블록으로 보고 서로 다른 값의 개수를 센다.
+    - 문제가 가진 해의 개수보다 적게 제시하면 False. 값의 정오는 보지 않는다.
+    - 해 개수 산출 실패(solve 실패, 항등/모순 문제, 매개변수 해)는 None.
+
+    ``budget`` 은 verify() 가 단계 비교에 이미 쓴 것과 같은 예산이다 — 밖에서
+    새 solve() 를 호출하면 S2 예산 집계가 깨지므로 반드시 이 예산을 그대로 쓴다.
+    """
+    if problem is None or problem[0] != "eq":
+        return None  # 대상 변수 불명 (문제식 미인식/등식 아님)
+    syms = sorted(problem[1].free_symbols | problem[2].free_symbols, key=str)
+    if len(syms) != 1:
+        return None  # 자유변수 0개 또는 2개 이상
+    target = syms[0]
+    if not parsed or parsed[-1] is None or parsed[-1][0] != "eq":
+        return None  # 마지막 단계가 unrecognized/비어 있음 — 단정하지 않는다
+
+    if _solution_value(parsed[-1], target) is None:
+        return False  # 항등/모순·미정리(2x=6, x^2=9)·다른 변수 등 — 해 진술이 아니다
+
+    # 이 지점에서 마지막 줄은 'target = 상수' 꼴의 해 진술이다.
+    # 문제가 가진 해의 개수를 세어 제시 개수와 비교한다.
+    if _node_too_complex(problem):
+        return None  # 개수 산출 자체가 무거운 입력 — 추측하지 않는다
+    if budget is not None and not budget.take(1):
+        return None  # S2 예산 소진 — False 로 단정하지 않는다
+    try:
+        sols = solve(Eq(problem[1], problem[2]), target, dict=True)
+    except Exception:
+        return None
+    if not isinstance(sols, list) or not sols:
+        return None  # 항등식/모순 문제·solve 실패 — 개수 산출 실패
+    for sol in sols:
+        if not isinstance(sol, dict):
+            return None
+        for value in sol.values():
+            if value.free_symbols:
+                return None  # 매개변수 해 — 개수 산출 애매
+
+    # 마지막부터 연속된 'target = 상수' 묶음이 최종 답 블록이다.
+    # 해를 여러 줄로 나눠 쓴 표기(x=3 / x=-3)를 부분 풀이로 오판하지 않는다.
+    presented = set()
+    for node in reversed(parsed):
+        value = _solution_value(node, target)
+        if value is None:
+            break  # 해 진술이 끊기면 거기까지가 답 블록이다
+        presented.add(value)
+    return len(presented) >= len(sols)
+
+
+def _final_answer_present_expression(parsed: list, target_form: str | None) -> bool | None:
+    """[expression] target_form 이 있고 마지막 단계가 단일 식이면 형태로 판정.
+
+    target_form 이 없으면 항상 None. 마지막 단계가 등식이면 REVIEW_REQUIRED
+    경로이므로 여기에 도달하지 않고, 인식 실패/빈 식이면 None.
+    """
+    if target_form is None:
+        return None
+    if not parsed or parsed[-1] is None or parsed[-1][0] != "expr":
+        return None
+    return form_matches(parsed[-1][1], target_form)
 
 
 class _SolveBudget:
@@ -347,6 +448,7 @@ def verify(problem_latex: str, steps: list[str]) -> Verdict:
     valid = [v for v, _ in comparisons]
     ref_step_no = [r for _, r in comparisons]
     first_error = next((i for i, v in enumerate(valid) if v is False), None)
+    final_answer = _final_answer_present_equation(problem, parsed, budget)
     return Verdict(
         steps=steps,
         parsed=parsed,
@@ -354,6 +456,7 @@ def verify(problem_latex: str, steps: list[str]) -> Verdict:
         first_error_index=first_error,
         unrecognized=unrecognized,
         ref_step_no=ref_step_no,
+        final_answer_present=final_answer,
     )
 
 
@@ -464,6 +567,7 @@ def verify_expression(
         unrecognized=unrecognized,
         ref_step_no=ref_step_no,
         form_violation_index=form_violation_index,
+        final_answer_present=_final_answer_present_expression(parsed, target_form),
     )
 
 

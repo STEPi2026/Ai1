@@ -542,7 +542,7 @@ def test_history_api_unchanged():
 
 
 def test_post_contracts_unchanged():
-    assert len(post("Z1", M21).json()) == 31  # PHASE 9-7 additive: 26 + 5
+    assert len(post("Z1", M21).json()) == 32  # 31 + final_answer_present (additive)
     assert len(client.post(
         "/analyze-solution",
         json={"problem_latex": "2(x-3)=6", "solution_text": "2(x-3)=6\n2x-3=6"},

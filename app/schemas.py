@@ -236,6 +236,17 @@ class AnalyzeAttemptResponse(BaseModel):
     steps_latex: list[str]
     valid: list[bool | None]
     unrecognized: list[int]
+    final_answer_present: bool | None = Field(
+        None,
+        description=(
+            "마지막 단계가 문제가 요구한 최종 답을 모두 포함하는지. "
+            "true=최종 답 모두 포함, false=최종 답 아님 확정(중간식·미완성·"
+            "일부 해만 제시), null=판단 불가(지원 범위 밖·target 변수 불명·"
+            "target_form 없음·인식 불확실). correct와 독립이다 — 최종 답을 "
+            "냈지만 틀렸으면 true + correct=false 이다. "
+            "analysis_status가 ANALYZED가 아니면 항상 null."
+        ),
+    )
     # --- 단계 목록 ---
     step_list: list[StepView] = Field(default_factory=list, description="명세서 step_list")
     # --- 다중 오류 / 관측 ---

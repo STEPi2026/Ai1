@@ -258,7 +258,9 @@ def test_api_response_contract_unchanged():
 
     r = run("A1", ["2(x-3)=6", "2x-3=6"])
     AnalyzeSolutionResponse(**r.api_response)
-    assert set(r.api_response) == set(AnalyzeSolutionResponse.model_fields)
+    assert set(r.api_response) == set(AnalyzeSolutionResponse.model_fields) | {
+        "final_answer_present"
+    }
     assert r.api_response["error_step"] == 2
     assert r.api_response["error_type"] == "concept_error"
     assert r.api_response["misconception_id"] == "2.1"

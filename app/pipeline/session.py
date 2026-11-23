@@ -878,6 +878,7 @@ def _review_analysis(
         "skill_ids": [skill],
         "error_subtype": None,
         "misconception_ids": [],
+        "final_answer_present": None,
     }
     return AttemptAnalysis(
         attempt=attempt,
@@ -1084,6 +1085,13 @@ def analyze_attempt(
 
     # 응답 조립은 관측 루프 밖에서 한다. 연쇄 오류로 모든 후보가 억제되어
     # observations 가 비는 경우에도 UnboundLocalError 없이 응답해야 한다.
+    analysis_status = analysis_status_of(verdict)
+    # 계약(AI② 합의): analysis_status != "ANALYZED" 이면 final_answer_present 는
+    # 항상 null. unrecognized 로 REVIEW_REQUIRED 가 되는 부분 판정 경로에서도
+    # 단정하지 않는다.
+    final_answer_present = (
+        verdict.final_answer_present if analysis_status == "ANALYZED" else None
+    )
     api_response = {
         "correct": correct,
         "error_step": (
@@ -1104,11 +1112,12 @@ def analyze_attempt(
         "steps_latex": step_texts,
         "valid": verdict.valid,
         "unrecognized": verdict.unrecognized,
-        "analysis_status": analysis_status_of(verdict),
+        "analysis_status": analysis_status,
         "skills": list(errors[0].skill_ids) if errors else [primary_skill],
         "skill_ids": list(errors[0].skill_ids) if errors else [primary_skill],
         "error_subtype": primary_error_subtype,
         "misconception_ids": [primary_misconception] if primary_misconception else [],
+        "final_answer_present": final_answer_present,
     }
 
     return AttemptAnalysis(

@@ -606,5 +606,5 @@ def test_legacy_text_api_contract_unchanged():
 def test_attempt_analysis_response_fields_unchanged_by_handoff():
     _, analysis = run_handoff(FakeOcrProvider(complete_result()))
     body = analysis.json()
-    assert len(body) == 31
+    assert len(body) == 32  # 31 + final_answer_present (additive)
     assert "ocr_confidence" not in body

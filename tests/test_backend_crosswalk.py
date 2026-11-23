@@ -331,7 +331,7 @@ def test_attempt_api_response_unchanged():
         )
         body = r.json()
         assert r.status_code == 200
-        assert len(body) == 31
+        assert len(body) == 32  # 31 + final_answer_present (additive)
         assert body["misconception_id"] == "2.1"
         assert body["skill"] == "distribution"
         assert set(body["misconception_tags"]) == {"2.1"}
@@ -381,7 +381,7 @@ def test_attempt_detail_and_history_unchanged():
             "/api/v1/attempts/A2/analyses/"
             + posted["analysis_id"].replace("#", "%23")
         ).json()
-        assert len(detail) == 32  # 26 + 5 + raw_result
+        assert len(detail) == 33  # 26 + 5 + raw_result + final_answer_present
         # GET 은 POST 와 같은 매핑을 재생성한다
         for key in (
             "official_skill_codes",
