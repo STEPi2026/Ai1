@@ -1,0 +1,140 @@
+AI① Learning Intelligence — final_answer_present 예시 (2026-11-18)
+================================================================
+
+이 문서는 AI② 연동용 예시입니다. 실제 로컬 실행(TestClient)으로 생성한 응답에서
+연동에 필요한 필드만 발췌했습니다. 값은 재현 가능하도록 고정 입력을 사용했습니다.
+
+계약
+----
+- 필드: final_answer_present: bool | null (기본 null, 누락도 null로 취급)
+- 대상: POST /api/v1/attempts/{attempt_id}/analyze 응답에만 추가
+        (legacy /analyze-solution 에는 없음)
+- analysis_status != ANALYZED 이면 항상 null
+- UNKNOWN(422) 응답에는 필드 자체가 없음
+- correct 와 독립:
+    · 틀린 최종 답  → final_answer_present=true,  correct=false
+    · 미정리 마지막 줄 → final_answer_present=false, correct=true (가능)
+- equation: 마지막부터 연속된 "변수 = 상수" 답 블록의 서로 다른 값 개수가
+            문제의 해 개수 이상이면 true, 미만이면 false.
+            값의 정오는 보지 않는다(그것은 correct 의 몫).
+- expression: target_form 이 있을 때만 판정하며, 요구 형태와 맞으면 true,
+              다르면 false, target_form=null 이면 항상 null.
+- 판단 불가(다변수, 인식 실패, 리뷰 필요 등)는 false 가 아니라 null.
+
+OpenAPI 스키마 (components.schemas.AnalyzeAttemptResponse)
+---------------------------------------------------------
+"final_answer_present": {
+  "anyOf": [ { "type": "boolean" }, { "type": "null" } ],
+  "title": "Final Answer Present",
+  "description": "마지막 단계가 문제가 요구한 최종 답을 모두 포함하는지. true=최종 답 모두 포함, false=최종 답 아님 확정(중간식·미완성·일부 해만 제시), null=판단 불가(지원 범위 밖·target 변수 불명·target_form 없음·인식 불확실). correct와 독립이다 — 최종 답을 냈지만 틀렸으면 true + correct=false 이다. analysis_status가 ANALYZED가 아니면 항상 null."
+}
+
+
+예시 1. 정답 완료 (정답 + 최종 답 제시)
+---------------------------------------
+요청 요지
+  problem_latex : 2(x-3)=6
+  solution_text : 2(x-3)=6 / 2x-6=6 / 2x=12 / x=6
+  problem_skills: ["linear_equation"]
+
+응답 발췌
+{
+  "analysis_status": "ANALYZED",
+  "correct": true,
+  "error_step": null,
+  "error_type": null,
+  "skill": "linear_equation",
+  "steps_latex": ["2(x-3)=6", "2x-6=6", "2x=12", "x=6"],
+  "valid": [true, true, true, true],
+  "unrecognized": [],
+  "final_answer_present": true,
+  "official_skill_codes": [],
+  "official_misconception_codes": []
+}
+
+AI② gating: ANALYZED + correct=true + final_answer_present=true
+          → 정답 완료 관측 후보
+
+
+예시 2. 부분 풀이 (오답 + 최종 답 미완성)
+-----------------------------------------
+요청 요지
+  problem_latex : x^2=9
+  solution_text : x^2=9 / x=3
+  problem_skills: ["quadratic_equation"]
+
+응답 발췌
+{
+  "analysis_status": "ANALYZED",
+  "correct": false,
+  "error_step": 2,
+  "error_type": "calculation",
+  "skill": "arithmetic",
+  "steps_latex": ["x^2=9", "x=3"],
+  "valid": [true, false],
+  "unrecognized": [],
+  "final_answer_present": false
+}
+
+해가 2개인데 1개만 제시 → final_answer_present=false.
+AI② gating: ANALYZED + final_answer_present=false
+          → 부분 풀이 (완료 아님)
+
+
+예시 3. 틀린 최종 답 (답은 냈지만 오답)
+---------------------------------------
+요청 요지
+  problem_latex : 2x=6
+  solution_text : 2x=6 / x=999
+  problem_skills: ["linear_equation"]
+
+응답 발췌
+{
+  "analysis_status": "ANALYZED",
+  "correct": false,
+  "error_step": 2,
+  "error_type": "calculation",
+  "skill": "arithmetic",
+  "steps_latex": ["2x=6", "x=999"],
+  "valid": [true, false],
+  "unrecognized": [],
+  "final_answer_present": true
+}
+
+final_answer_present=true + correct=false 조합의 기준 예시.
+AI② gating: ANALYZED + correct=false + final_answer_present=true
+          → 오답이지만 완료된 시도 (완료 집계 여부는 AI② 정책)
+
+
+참고. 해를 여러 줄로 쓴 답안
+----------------------------
+요청 요지
+  problem_latex : x^2=9
+  solution_text : x^2=9 / x=3 / x=-3
+
+응답 발췌
+{
+  "analysis_status": "ANALYZED",
+  "correct": false,
+  "error_step": 2,
+  "error_type": "calculation",
+  "steps_latex": ["x^2=9", "x=3", "x=-3"],
+  "valid": [true, false, false],
+  "final_answer_present": true
+}
+
+- 최종 답은 두 해를 모두 제시했으므로 final_answer_present=true.
+- correct=false 는 AI①의 단계 동치 판정 특성 때문입니다.
+  (x=3 한 줄이 x^2=9 와 동치가 아니라고 보는 기존 규칙 — 이번 필드와 무관)
+- 따라서 correct=false + final_answer_present=true 조합이 항상 "오답"을
+  뜻하지는 않습니다. correct 는 "단계에서 오류가 검출되지 않음"의 의미입니다.
+
+
+현재 null 로 가는 대표 입력
+--------------------------
+- x=3, x=-3 처럼 한 줄에 쉼표로 여러 해를 쓴 표기
+- x=±3
+- {3, -3}
+  → 위 표기는 인식 실패로 ANALYSIS_STATUS=REVIEW_REQUIRED, final_answer_present=null
+- 다변수 문제, target_form 없는 expression, 마지막 줄 인식 실패
+- UNKNOWN(422) 응답: 필드 자체가 없음

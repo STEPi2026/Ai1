@@ -1,0 +1,117 @@
+AI② 담당자님, AI① Learning Intelligence 회신입니다.
+(2026-11-17 / 이전 회신 2026-11-10 이후 확정 사항)
+
+0. 요약
+- 4개 항목(포기 처리, final_answer_present, OCR 추가 필드, 공통 코드) 모두 합의된 상태입니다.
+- skill_ids=[] 문의는 확인했습니다. 별도 버그가 아니며, 필드 위치가 다른 예시가 섞인 것입니다.
+- Skill/Misconception 시드 목록(94/23)은 Backend 공식 코드표이며, AI②가 직접 쓰는 코드가 아닙니다.
+
+
+1. 포기·미제출 처리 (확정)
+- AI①은 별도 포기 상태를 추가하지 않습니다.
+- 학생 풀이가 없으면 /analyze를 호출하지 않는 흐름에 동의합니다.
+- 포기·미제출·해설 열람은 AI① 응답에 포함하지 않고, 숙련도·보상에도 반영하지 않습니다.
+
+
+2. final_answer_present (확정 — 응답 전용 additive 필드)
+- 타입: bool | null, 기본값 null. 필드 누락도 null로 취급해 주세요.
+- true: 마지막 단계가 문제가 요구한 최종 답을 모두 포함한다.
+- false: 최종 답이 아니라고 확정할 수 있다. (중간식, 미완성, 말줄임 등)
+- null: 판단 불가. (지원 범위 밖, 대상 변수 불명, target_form 없음, 인식 불확실 등)
+- correct와 독립입니다. 최종 답이 있지만 틀렸으면 final_answer_present=true, correct=false가 가능합니다.
+- equation: 문제의 대상 변수에 대한 모든 해를 마지막 단계에서 제시해야 true입니다.
+  중간에 x=3이 보이는 것만으로는 true가 아닙니다. 해가 2개 이상이면 전부 있어야 합니다.
+  다변수·매개변수·지원하지 않는 형태·종결 판단 불가면 null입니다.
+- expression: target_form이 있을 때만 판정합니다. target_form=null이면 항상 null입니다.
+  expanded/factored/integer와 실제 형태가 다르면 false입니다.
+- analysis_status가 ANALYZED가 아니면 null입니다.
+  마지막 단계가 unrecognized이거나 비어 있어도 null입니다.
+
+AI② gating (합의)
+- ANALYZED + correct=true + final_answer_present=true → 정답 완료 관측 후보
+- false/null → 부분 풀이 또는 완료 미확인
+- REVIEW_REQUIRED / UNKNOWN → 숙련도 갱신 제외
+
+※ 현재 코드에는 아직 필드가 없습니다. 구현·배포 후 최신 OpenAPI와 함께
+   정답 완료 / 부분 풀이 / 틀린 최종 답 예시 3종을 보내드리겠습니다.
+
+
+3. skill_ids=[] 문의 — 확인 결과 (버그 아님)
+AI②가 보신 예시 A는 /analyze 응답과 legacy /analyze-solution 응답의 필드가 섞인 payload입니다.
+현행 /analyze 응답에는 top-level skills / skill_ids 필드 자체가 없습니다.
+
+실제 /analyze 정답 응답을 재현한 결과:
+- skill: linear_equation
+- observations[0].skill_id: linear_equation
+- top-level skills / skill_ids: 필드 없음
+- step_list[].skill_ids: []  ← 정상 (정답 풀이 단계에 skill 선언이 없을 때)
+
+정리
+- /analyze canonical 필드
+  · skill: 이번 시도에서 관측된 대표 Skill 1개
+  · observations[].skill_id: Knowledge State 갱신 대상 관측. 추적 가능한 Skill이 없으면 빈 배열 가능
+  · step_list[].skill_ids: 단계별 선언 Skill. 선택 사항이라 빈 배열이 정상
+  · top-level skills / skill_ids: 없음
+- /analyze-solution (legacy)
+  · top-level skills / skill_ids가 있으며, 정답이면 [problem_skill]이 들어갑니다.
+  · 여기서 빈 배열이 나오면 버그이므로 별도로 알려 주세요.
+
+AI② 사용 기준
+- 숙련도 갱신은 observations[].skill_id 기준으로 하십시오.
+- step_list[].skill_ids를 관측 목록으로 사용하지 마십시오.
+- observations가 비어 있어도 skill이 있다고 해서 완료·정답 관측으로 간주하지 마십시오.
+- 승인 공통 코드가 없으면 official_*는 빈 배열이 정상이며, 기본 Skill로 치환하지 마십시오.
+
+AI①은 top-level skill_ids를 /analyze에 새로 추가하지 않습니다.
+대표 Skill은 skill, 관측은 observations로 이미 분리되어 있어 중복 필드를 만들면 혼선이 재발합니다.
+
+
+4. OCR 추가 필드 (확정 — structured provider 준비 시 적용)
+- capture_mode: 요청 값(에코). problem_only 또는 problem_and_solution
+- layout_detected: 실제 검출 결과. problem_only, problem_and_solution, mixed, unknown
+- layout_mismatch: 요청과 실제가 명확히 다르면 true, 같으면 false, 감지 불가면 null
+
+라우팅 조건 (모두 만족할 때만 구조화 결과를 문제/풀이로 사용)
+- representation=structured
+- layout_detected != unknown
+- layout_mismatch != true
+- ocr_confidence가 합의 임계값 이상
+
+하나라도 어긋나면 사용자 확인·수정 단계로 보냅니다.
+raw_text만 있거나 mixed/unknown이면 문제 원문으로 확정하지 않습니다.
+mixed·unknown·raw_text를 모두 사용자 확인 대상으로 처리하는 AI② 방침에 동의합니다.
+
+- problem_and_solution 명칭을 Backend와 공유하는 것에 동의합니다.
+- 신뢰도 임계값은 별도 합의로 둡니다. AI① 제안값은 0.85이며, 합의 전에는
+  라우팅 조건으로 확정하지 않습니다.
+- region_id 추가 방향에 동의합니다. 현행 OcrRegion에는 region_id가 없어
+  단계와 영역 연결이 약합니다. structured 준비 시 추가하겠습니다.
+
+
+5. 공통 코드·Concept (확정)
+- Concept는 기존 합의대로 Backend가 Skill–Concept 관계에서 도출합니다. AI①은 concept를 만들지 않습니다.
+- AI①은 내부 ID를 그대로 보존합니다. (skill, skill_ids, observations[].skill_id, misconception_ids)
+- AI②가 내부 ID를 임의로 SKL-*/MIS-*로 치환하지 않는 것에 동의합니다.
+- 공통 코드가 확인되지 않은 관측을 기본 Skill로 바꿔 숙련도에 반영하지 않는 것도 동의합니다.
+- official_*가 빈 배열인 것은 미매핑 정상 상태입니다.
+
+
+6. Skill / Misconception 시드 목록에 대하여
+- 전달된 skills.csv(94행) / misconceptions.csv(23행)는 **Backend 공식 Seed 코드표**입니다.
+  (SKL-1-001 ~ SKL-4-017, MIS-1-001 ~ MIS-1-023, 각 행에 concept_code·선수 Skill 포함)
+- AI②가 이 코드를 직접 매핑하거나 저장할 필요는 없습니다.
+  AI②는 AI① 내부 ID를 그대로 보관·전달하고, 공식 코드 변환은 Backend 경계에서만 수행합니다.
+- AI① ↔ Backend 코드 매핑 후보표는 Backend·기획 검토용으로 별도 작성 중입니다.
+  승인 전에는 official_*가 빈 배열이며, 승인된 2건만 crosswalk에 반영되어 있습니다.
+  · distribution → SKL-1-004
+  · 2.1 → MIS-1-004
+- 따라서 AI② 쪽에서 추가로 하실 일은 없습니다. 시드 목록은 참고용으로만 봐 주세요.
+
+
+7. 다음 단계
+1) AI①: final_answer_present 구현 및 테스트
+2) AI①: 배포 후 최신 OpenAPI + 예시 3종(정답 완료 / 부분 풀이 / 틀린 최종 답) 전달
+3) AI①: OCR 3필드는 structured provider 준비 시점에 반영 (현행 provider는 raw_text만 반환)
+4) 협의: ocr_confidence 임계값, structured OCR 제공 시점
+
+이상입니다.
