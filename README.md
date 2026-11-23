@@ -345,6 +345,16 @@ OCR 응답 → Attempt 분석 요청의 변환 규칙(Backend responsibility)은
 `docs/AI1_명세서_대조표.md` §14.18 에 있고, `tests/test_ocr_analysis_handoff.py` 가
 2단계 흐름을 fake provider 로 검증한다.
 
+AI② 전달 패키지(OpenAPI·대표 예시 4종·판정 한계 사본·전달 README)는 한 명령으로
+재현한다 — 수동 편집 금지, 실제 앱에서 생성된다:
+
+```powershell
+.venv\Scripts\python scripts\export_contract.py --out-dir docs/AI2_전달_2026-11-23
+```
+
+기본 출력은 `docs/AI2_전달_<YYYY-MM-DD>/` 이며, 배포 절차는
+`docs/AI1_배포_체크리스트.md` 를 따른다.
+
 ### `GET /api/v1/students/{student_id}/skills`
 
 학생이 **관측된** Skill 의 현재 state/mastery 목록 (명세 웹 r26/r27 숙련도 차트).
