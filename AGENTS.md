@@ -6,7 +6,7 @@
 ## 명령
 
 ```bash
-.venv\Scripts\python -m pytest            # 전체 (현재 1897 passed)
+.venv\Scripts\python -m pytest            # 전체 (현재 1904 passed)
 .venv\Scripts\pyflakes app tests eval     # lint (0건 유지)
 .venv\Scripts\uvicorn app.main:app --reload
 ```
