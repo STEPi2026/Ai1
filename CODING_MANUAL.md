@@ -86,7 +86,7 @@ problem_latex + solution_text
 | `GET /api/v1/students/{id}/history` | `StudentHistoryItem` **23** | |
 | `GET /api/v1/students/{id}/misconceptions/top` | 항목 **6** / 응답 **5** 키 | |
 
-- **additive(필드 추가)는 허용, 삭��·개명·의미 변경은 금지**입니다.
+- **additive(필드 추가)는 허용, 삭제·개명·의미 변경은 금지**입니다.
 - 필드 집합을 고정하는 테스트가 존재합니다: `tests/test_attempt_api.py::test_response_field_set_is_stable` 등.
 - 새 필드를 추가하면 **해당 고정 테스트의 집합에도 추가**해야 합니다(삭제가 아니라 추가).
 

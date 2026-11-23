@@ -5,7 +5,7 @@
 동작에는 영향이 없지만 문서/주석 신뢰도를 깨므로, 같은 손상이 다시 들어오지
 않도록 고정한다.
 
-대상: `app/`, `tests/`, `scripts/`, `docs/` 의 .py/.md/.txt/.csv/.json
+대상: `app/`, `tests/`, `scripts/`, `docs/` 및 저장소 루트의 문서 파일
 제외: `__pycache__`, `.venv`, `eval/_local`, `docs/AI2_전달_*`(생성물)
 
 파일 수가 많지 않아 수 초 이내에 끝난다. 실패 시 파일/줄과 미리보기를 모아 보여준다.
@@ -41,6 +41,13 @@ def _iter_text_files():
             if any(str(path).startswith(str(prefix)) for prefix in SKIP_PREFIXES):
                 continue
             yield path
+    # 저장소 루트 문서(README, AGENTS, 개발현황 등)도 같은 규칙으로 검사한다.
+    for path in ROOT.iterdir():
+        if not path.is_file() or path.suffix.lower() not in SUFFIXES:
+            continue
+        if path.name.startswith(SKIP_FILE_PREFIXES):
+            continue
+        yield path
 
 
 def test_repository_text_has_no_replacement_characters():
