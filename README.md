@@ -51,7 +51,7 @@ app/
     session.py            Problem · CorrectSolution · StudentAttempt · AttemptAnalysis · 단계 정렬
     repository.py         학습 저장소 계층 (in-memory) — 분석 이력 · attempt 단위 락
   integration/
-    backend_crosswalk.py  Backend 승인 코드 crosswalk (승인 2건만, 단독 소유)
+    backend_crosswalk.py  Backend 승인 코드 crosswalk (정방향 5 / 역방향 7 + 오개념 1, 단독 소유)
     backend_adapter.py    Backend 전달 경계 — ID 정규화 · 코드 배열 · 대표 오류 · tracking Skill 계약
     ocr.py                OCR provider 인터페이스 · registry · status/confidence 파생
     google_vision.py      명시적 선택형 Cloud Vision provider (ADC · DOCUMENT_TEXT_DETECTION)
@@ -555,13 +555,13 @@ subtype→부모 error_type 소속, 기존 ID 유지, `bkt_eligible` boolean, �
 
 | 항목 | 결과 |
 |---|---|
-| pytest | **1916 passed**, 1 warning (Starlette httpx deprecation) |
+| pytest | **1935 passed**, 1 warning (Starlette httpx deprecation) |
 | lint | `pyflakes app tests` → 0건 |
 | taxonomy validation | `validate_all()` → `[]` |
 | golden regression | 100 case · `correct`/`error_step`/`error_type`/`skill`/`state` **각 1.000** · 실패 0 · false mismatch 0 |
 | API smoke | PHASE 1~5 누적 15개 + PHASE 8/9 누적 시나리오 통과 |
 
-기존 테스트는 삭제하지 않았고(271 → 1916, 2026-11-23 기준, 전부 증가), golden expected 값도 변경하지 않았다.
+기존 테스트는 삭제하지 않았고(271 → 1935, 2026-11-23 기준, 전부 증가), golden expected 값도 변경하지 않았다.
 
 ## 다음 단계 (기획 로드맵)
 

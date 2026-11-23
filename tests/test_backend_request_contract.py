@@ -230,7 +230,7 @@ def test_incorrect_analysis_with_tracking_skill_exposes_approved_code():
     assert r.status_code == 200
     assert body["correct"] is False
     assert body["misconception_tag"] == "2.1"
-    assert body["official_skill_codes"] == ["SKL-1-004"]
+    assert body["official_skill_codes"] == ["SKL-1-004", "SKL-1-005"]
     assert body["official_misconception_codes"] == ["MIS-1-004"]
     assert body["states"]["distribution"] == "needs_practice"
     assert body["mastery_by_skill"]["distribution"] == 0.3

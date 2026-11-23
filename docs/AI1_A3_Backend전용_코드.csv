@@ -1,8 +1,8 @@
 ﻿구분,AI①_ID,AI①_이름,Backend_코드,Backend_이름,현재_상태,관계,근거·주의,기획_승인
 Backend 전용 Skill,,,SKL-1-001,동류항 구분하기,대응 없음,—,AI① taxonomy에 대응 Skill 없음. 개념=STP-1-001 다항식의 덧셈과 뺄셈. 선수=없음,
 Backend 전용 Skill,,,SKL-1-006,곱셈 공식 선택하기,대응 없음,—,AI① taxonomy에 대응 Skill 없음. 개념=STP-1-003 곱셈 공식. 선수=SKL-1-004,
-Backend 전용 Skill,,,SKL-1-007,곱셈 공식으로 전개하기,대응 없음,—,AI① taxonomy에 대응 Skill 없음. 개념=STP-1-003 곱셈 공식. 선수=SKL-1-006,
-Backend 전용 Skill,,,SKL-1-008,곱셈 공식 변형하기,대응 없음,—,AI① taxonomy에 대응 Skill 없음. 개념=STP-1-003 곱셈 공식. 선수=SKL-1-007,
+Backend 전용 Skill,,,SKL-1-007,곱셈 공식으로 전개하기,대응 없음,—,"AI① taxonomy에 대응 Skill 없음. 개념=STP-1-003 곱셈 공식. 선수=SKL-1-006 2026-11-23 Backend 결정: Backend 전용 유지, AI① 422 유지.",Backend 2026-11-23
+Backend 전용 Skill,,,SKL-1-008,곱셈 공식 변형하기,대응 없음,—,"AI① taxonomy에 대응 Skill 없음. 개념=STP-1-003 곱셈 공식. 선수=SKL-1-007 2026-11-23 Backend 결정: Backend 전용 유지, AI① 422 유지.",Backend 2026-11-23
 Backend 전용 Skill,,,SKL-1-011,항등식 판별하기,대응 없음,—,AI① taxonomy에 대응 Skill 없음. 개념=STP-1-005 항등식. 선수=없음,
 Backend 전용 Skill,,,SKL-1-012,항등식의 계수 비교하기,대응 없음,—,AI① taxonomy에 대응 Skill 없음. 개념=STP-1-005 항등식. 선수=SKL-1-011,
 Backend 전용 Skill,,,SKL-1-013,항등식에서 미정계수 구하기,대응 없음,—,AI① taxonomy에 대응 Skill 없음. 개념=STP-1-005 항등식. 선수=SKL-1-012,

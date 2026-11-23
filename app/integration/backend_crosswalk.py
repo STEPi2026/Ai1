@@ -26,8 +26,12 @@ from __future__ import annotations
 
 import re
 
+from app.taxonomy import is_known_skill as _is_known_skill
+from app.taxonomy import is_tracking_skill as _is_tracking_skill
+
 __all__ = [
     "APPROVED_SKILL_CODES",
+    "APPROVED_SKILL_CODE_TO_ID",
     "APPROVED_MISCONCEPTION_CODES",
     "UNMAPPED",
     "misconception_code",
@@ -42,8 +46,28 @@ __all__ = [
 UNMAPPED: None = None
 
 #: Backend 가 승인한 Skill 매핑만 담는다. Backend 승인 외에는 추가 금지.
+#:
+#: 정방향(AI① skill_id → Backend 코드)은 N:1 공유 Skill 의 **대표 코드 1개**만
+#: 내보낸다. 예: polynomial_addition 은 SKL-1-002 로 표시하고, 입력으로는
+#: SKL-1-003 도 받는다(역방향 표 참조). 2026-11-23 Backend 승인.
 APPROVED_SKILL_CODES: dict[str, str] = {
     "distribution": "SKL-1-004",  # 다항식의 곱 전개하기
+    "polynomial_addition": "SKL-1-002",  # 다항식의 덧셈 수행하기(대표)
+    "polynomial_multiplication": "SKL-1-005",  # 전개식 정리하기
+    "factoring_common": "SKL-1-023",  # 공통인수로 묶기
+    "factoring_formula": "SKL-1-025",  # 인수분해 공식 적용하기(대표)
+}
+
+#: Backend 코드 → AI① skill_id 역방향 승인표. N:1(여러 코드 → 한 Skill)을 허용한다.
+#: 정방향 표를 단순히 뒤집으면 003/026 이 사라지므로 별도 표로 둔다.
+APPROVED_SKILL_CODE_TO_ID: dict[str, str] = {
+    "SKL-1-002": "polynomial_addition",
+    "SKL-1-003": "polynomial_addition",
+    "SKL-1-004": "distribution",
+    "SKL-1-005": "polynomial_multiplication",
+    "SKL-1-023": "factoring_common",
+    "SKL-1-025": "factoring_formula",
+    "SKL-1-026": "factoring_formula",
 }
 
 #: Backend 가 승인한 오개념 매핑만 담는다. Backend 승인 외에는 추가 금지.
@@ -64,8 +88,32 @@ def _validate(codes: dict[str, str]) -> dict[str, str]:
     return dict(codes)
 
 
+def _validate_reverse(codes: dict[str, str]) -> dict[str, str]:
+    """역방향 표(코드 → 내부 ID)의 형식과 정방향 표와의 정합성을 검사한다."""
+    for code, skill_id in codes.items():
+        if not isinstance(code, str) or not _CODE_PATTERN.match(code):
+            raise ValueError(f"Backend 공식 코드 형식이 아닙니다: {code!r}")
+        if not isinstance(skill_id, str) or not _is_known_skill(skill_id):
+            raise ValueError(f"taxonomy 에 없는 skill_id 입니다: {skill_id!r}")
+        if not _is_tracking_skill(skill_id):
+            raise ValueError(
+                f"Knowledge State 관측 대상이 아닌 skill 은 역변환 대표가 될 수 없습니다: "
+                f"{skill_id!r}"
+            )
+    for skill_id, code in APPROVED_SKILL_CODES.items():
+        if codes.get(code) != skill_id:
+            raise ValueError(
+                f"정방향 대표 코드가 역방향 표와 일치하지 않습니다: "
+                f"{skill_id!r} → {code!r}"
+            )
+    if set(codes.values()) != set(APPROVED_SKILL_CODES):
+        raise ValueError("역방향 표의 내부 ID 집합이 정방향 표와 다릅니다.")
+    return dict(codes)
+
+
 _validate(APPROVED_SKILL_CODES)
 _validate(APPROVED_MISCONCEPTION_CODES)
+_validate_reverse(APPROVED_SKILL_CODE_TO_ID)
 
 
 def skill_code(skill_id: str | None) -> str | None:
@@ -121,8 +169,8 @@ def mapped_misconception_codes(
 
 
 def is_approved_skill_code(code: str | None) -> bool:
-    """Backend 승인 목록에 있는 코드인지."""
-    return code is not None and code in set(APPROVED_SKILL_CODES.values())
+    """Backend 승인 목록에 있는 코드인지 (역방향 승인표 기준)."""
+    return code is not None and code in APPROVED_SKILL_CODE_TO_ID
 
 
 def is_approved_misconception_code(code: str | None) -> bool:

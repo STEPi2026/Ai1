@@ -55,6 +55,8 @@ def test_approved_tables_are_the_crosswalk_objects():
 
 def test_approved_mapping_values_unchanged():
     assert ba.skill_code("distribution") == "SKL-1-004"
+    assert ba.skill_code("polynomial_addition") == "SKL-1-002"
+    assert ba.skill_code("factoring_formula") == "SKL-1-025"
     assert ba.misconception_code("2.1") == "MIS-1-004"
 
 
@@ -105,7 +107,7 @@ def test_provisional_and_approved_never_collide():
 
 @pytest.mark.parametrize(
     "skill_id",
-    ["linear_equation", "arithmetic", "polynomial_multiplication", "comprehension"],
+    ["linear_equation", "arithmetic", "comprehension"],
 )
 def test_unmapped_skill_ids_stay_none(skill_id):
     assert ba.skill_code(skill_id) is None
@@ -379,19 +381,39 @@ def test_backend_id_error_code_is_stable():
 # 9. Backend Skill code 역변환
 # ===========================================================================
 
-@pytest.mark.parametrize("code,skill_id", [("SKL-1-004", "distribution")])
+@pytest.mark.parametrize(
+    "code,skill_id",
+    [
+        ("SKL-1-002", "polynomial_addition"),
+        ("SKL-1-003", "polynomial_addition"),
+        ("SKL-1-004", "distribution"),
+        ("SKL-1-005", "polynomial_multiplication"),
+        ("SKL-1-023", "factoring_common"),
+        ("SKL-1-025", "factoring_formula"),
+        ("SKL-1-026", "factoring_formula"),
+    ],
+)
 def test_skill_id_for_code(code, skill_id):
     assert ba.skill_id_for_code(code) == skill_id
 
 
 def test_reverse_index_covers_both_tables():
-    assert len(ba._SKILL_CODE_TO_ID) == len(ba.APPROVED_SKILL_CODES) + len(
+    assert len(ba._SKILL_CODE_TO_ID) == len(ba.APPROVED_SKILL_CODE_TO_ID) + len(
         ba.PROVISIONAL_SKILL_CODES
     )
 
 
 @pytest.mark.parametrize(
-    "bad", ["SKL-9-999", "MIS-1-004", "SKL-1-4", "distribution", "SKL-2-037"]
+    "bad",
+    [
+        "SKL-9-999",
+        "MIS-1-004",
+        "SKL-1-4",
+        "distribution",
+        "SKL-2-037",
+        "SKL-1-007",
+        "SKL-1-008",
+    ],
 )
 def test_unknown_or_malformed_codes_raise(bad):
     with pytest.raises(ba.UnknownSkillCodeError):

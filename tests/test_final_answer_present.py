@@ -481,3 +481,42 @@ def test_a6_review_reason_codes_are_exposed():
     assert not_expr.json()["review_reasons"] == [
         "expression_problem_not_expression"
     ]
+
+
+# ===========================================================================
+# 분기 답안 입력 형식 — 한 줄 쉼표/슬래시는 분기로 인식하지 않는다
+# ===========================================================================
+
+def test_single_line_branch_is_unknown():
+    """`x=3 / x=-3` 한 줄만 보내면 인식 가능한 줄이 없어 422 UNKNOWN."""
+    r = client.post(
+        URL.format(attempt_id="F-SLASH-1"),
+        json=body(
+            "x=3 / x=-3",
+            problem_id="P-F-SLASH-1",
+            problem_latex="x^2=9",
+            problem_skills=["quadratic_equation"],
+        ),
+    )
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert detail["code"] == "E_UNRECOGNIZED"
+    assert detail["analysis_status"] == "UNKNOWN"
+
+
+def test_comma_branch_is_review_without_solution_block_reason():
+    """문제 줄이 있으면 REVIEW_REQUIRED지만, 쉼표 한 줄은 분기 사유가 아니다."""
+    r = client.post(
+        URL.format(attempt_id="F-COMMA-1"),
+        json=body(
+            "x^2=9\nx=3, x=-3",
+            problem_id="P-F-COMMA-1",
+            problem_latex="x^2=9",
+            problem_skills=["quadratic_equation"],
+        ),
+    )
+    assert r.status_code == 200
+    body_json = r.json()
+    assert body_json["analysis_status"] == "REVIEW_REQUIRED"
+    assert body_json["review_reasons"] == []
+    assert body_json["unrecognized"] == [2]

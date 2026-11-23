@@ -234,7 +234,8 @@
         ],
         "confidence": 0.9,
         "official_skill_codes": [
-          "SKL-1-004"
+          "SKL-1-004",
+          "SKL-1-005"
         ],
         "official_misconception_codes": [
           "MIS-1-004"
@@ -346,7 +347,8 @@
         ],
         "confidence": 0.9,
         "official_skill_codes": [
-          "SKL-1-004"
+          "SKL-1-004",
+          "SKL-1-005"
         ],
         "official_misconception_codes": [
           "MIS-1-004"

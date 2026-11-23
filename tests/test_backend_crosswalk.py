@@ -1,7 +1,8 @@
 """PHASE 9-4A — Backend 승인 코드 crosswalk.
 
 검증 범위
-  - 승인 매핑 2건이 정확히 성립한다
+  - 승인 매핑(정방향 대표 5 + 역방향 7 + 오개념 1)이 정확히 성립한다
+  - N:1 공유 코드(002/003, 025/026)는 역방향에서 모두 같은 Skill 로 간다
   - STP(concept) 코드는 AI① 이 반환하지 않는다
   - 미승인 내부 ID 는 전부 unmapped(None) 로 남는다
   - AI① taxonomy ID 와 legacy API 응답이 불변이다
@@ -38,12 +39,31 @@ UNAPPROVED_SKILL_IDS = [
     "transposition",
     "arithmetic",
     "linear_equation",
-    "polynomial_multiplication",
     "comprehension",
     "set_operation",
     "function_concept",
 ]
 UNAPPROVED_MISCONCEPTION_IDS = ["3.1", "1.1", "1.2", "2.2", "2.4", "3.2", "5.1"]
+
+#: 2026-11-23 Backend 승인. 정방향(내부 → 대표 코드) 기준.
+APPROVED_FORWARD = {
+    "distribution": "SKL-1-004",
+    "polynomial_addition": "SKL-1-002",
+    "polynomial_multiplication": "SKL-1-005",
+    "factoring_common": "SKL-1-023",
+    "factoring_formula": "SKL-1-025",
+}
+
+#: 역방향(코드 → 내부). N:1 공유 코드를 모두 포함한다.
+APPROVED_REVERSE = {
+    "SKL-1-002": "polynomial_addition",
+    "SKL-1-003": "polynomial_addition",
+    "SKL-1-004": "distribution",
+    "SKL-1-005": "polynomial_multiplication",
+    "SKL-1-023": "factoring_common",
+    "SKL-1-025": "factoring_formula",
+    "SKL-1-026": "factoring_formula",
+}
 
 
 # ===========================================================================
@@ -54,9 +74,9 @@ def test_distribution_maps_to_skl_1_004():
     assert cw.skill_code("distribution") == "SKL-1-004"
 
 
-def test_skill_mapping_table_is_exactly_one_approved_entry():
+def test_skill_mapping_table_is_exactly_approved_entries():
     """Backend 승인분만 존재해야 한다. 임의 추가 금지."""
-    assert cw.APPROVED_SKILL_CODES == {"distribution": "SKL-1-004"}
+    assert cw.APPROVED_SKILL_CODES == APPROVED_FORWARD
 
 
 def test_skill_code_returns_none_for_none_and_empty():
@@ -64,9 +84,25 @@ def test_skill_code_returns_none_for_none_and_empty():
     assert cw.skill_code("") is None
 
 
+def test_approved_reverse_mapping():
+    assert cw.APPROVED_SKILL_CODE_TO_ID == APPROVED_REVERSE
+    for code, skill_id in APPROVED_REVERSE.items():
+        assert cw.is_approved_skill_code(code) is True
+        assert cw.skill_code(skill_id) is not None
+
+
+def test_reverse_table_covers_forward_representatives():
+    assert set(cw.APPROVED_SKILL_CODE_TO_ID.values()) == set(cw.APPROVED_SKILL_CODES)
+    for skill_id, code in cw.APPROVED_SKILL_CODES.items():
+        assert cw.APPROVED_SKILL_CODE_TO_ID[code] == skill_id
+
+
 def test_is_approved_skill_code():
     assert cw.is_approved_skill_code("SKL-1-004") is True
-    assert cw.is_approved_skill_code("SKL-1-002") is False
+    assert cw.is_approved_skill_code("SKL-1-002") is True
+    assert cw.is_approved_skill_code("SKL-1-003") is True
+    assert cw.is_approved_skill_code("SKL-1-026") is True
+    assert cw.is_approved_skill_code("SKL-1-007") is False
     assert cw.is_approved_skill_code(None) is False
 
 
@@ -145,7 +181,7 @@ def test_no_callable_emits_stp():
 def test_output_never_contains_concept_key():
     """crosswalk 결과 dict 에 concept 키가 생기지 않는다."""
     assert not hasattr(cw, "to_backend_target")
-    assert set(cw.APPROVED_SKILL_CODES) == {"distribution"}
+    assert set(cw.APPROVED_SKILL_CODES) == set(APPROVED_FORWARD)
     assert all("concept" not in key.lower() for key in cw.APPROVED_SKILL_CODES)
     assert all("concept" not in key.lower() for key in cw.APPROVED_MISCONCEPTION_CODES)
 
@@ -183,11 +219,10 @@ def test_comprehension_has_no_misconception():
     assert cw.misconception_code(misconception_id) is None
 
 
-def test_every_internal_skill_is_unmapped_except_distribution():
-    """taxonomy 전체를 훑어 승인된 1건 외에는 전부 None 이어야 한다."""
+def test_every_internal_skill_is_unmapped_except_approved():
+    """taxonomy 전체를 훑어 승인된 5개 외에는 전부 None 이어야 한다."""
     for skill_id in all_skill_ids(load_skill_catalog()):
-        expected = "SKL-1-004" if skill_id == "distribution" else None
-        assert cw.skill_code(skill_id) == expected, skill_id
+        assert cw.skill_code(skill_id) == APPROVED_FORWARD.get(skill_id), skill_id
 
 
 def test_every_misconception_is_unmapped_except_2_1():
@@ -336,7 +371,7 @@ def test_attempt_api_response_unchanged():
         assert body["skill"] == "distribution"
         assert set(body["misconception_tags"]) == {"2.1"}
         # PHASE 9-7: approved 코드는 새 필드로만, 기존 taxonomy ID 는 그대로
-        assert body["official_skill_codes"] == ["SKL-1-004"]
+        assert body["official_skill_codes"] == ["SKL-1-004", "SKL-1-005"]
         assert body["official_misconception_codes"] == ["MIS-1-004"]
         assert body["misconception_tag"] == "2.1"
         assert body["provisional_skill_codes"] == []
@@ -441,6 +476,7 @@ def test_existing_modules_do_not_import_crosswalk():
 def test_public_api_surface_is_intentional():
     assert set(cw.__all__) == {
         "APPROVED_SKILL_CODES",
+        "APPROVED_SKILL_CODE_TO_ID",
         "APPROVED_MISCONCEPTION_CODES",
         "UNMAPPED",
         "misconception_code",

@@ -226,7 +226,7 @@ def test_mixed_codes_and_internal_ids_resolve():
     body = r.json()
     # 요청은 SKL-1-004 + linear_equation 로 정상 해석됐다
     assert body["skill"] == "distribution"
-    assert body["official_skill_codes"] == ["SKL-1-004"]
+    assert body["official_skill_codes"] == ["SKL-1-004", "SKL-1-005"]
     # 응답 코드는 관측 skill 기준이고, provisional 표는 비어 있다 (A2)
     assert body["provisional_skill_codes"] == []
     stored = get_repository().get_problem("P1")
@@ -263,7 +263,7 @@ def test_primary_approved_error_exposes_official_codes():
     assert body["error_type"] == "concept_error"
     assert body["misconception_id"] == "2.1"
     assert body["misconception_tag"] == "2.1"
-    assert body["official_skill_codes"] == ["SKL-1-004"]
+    assert body["official_skill_codes"] == ["SKL-1-004", "SKL-1-005"]
     assert body["official_misconception_codes"] == ["MIS-1-004"]
     assert body["provisional_skill_codes"] == []
     assert body["provisional_misconception_codes"] == []
@@ -490,7 +490,7 @@ def test_post_idempotent_and_detail_share_identical_mapping():
     second = post("M1").json()  # 멱등 재응답
     detail = detail_of("M1", first["analysis_id"]).json()
     for body in (first, second, detail):
-        assert body["official_skill_codes"] == ["SKL-1-004"]
+        assert body["official_skill_codes"] == ["SKL-1-004", "SKL-1-005"]
         assert body["official_misconception_codes"] == ["MIS-1-004"]
         assert body["provisional_skill_codes"] == []
         assert body["provisional_misconception_codes"] == []
@@ -614,7 +614,7 @@ def test_legacy_taxonomy_ids_are_not_overwritten_by_codes():
     assert body["misconception_id"] == "2.1"
     assert body["misconception_tags"] == ["2.1"]
     # Backend 코드는 별도 필드로만 coexisting
-    assert body["official_skill_codes"] == ["SKL-1-004"]
+    assert body["official_skill_codes"] == ["SKL-1-004", "SKL-1-005"]
 
 
 def test_correct_field_unchanged():

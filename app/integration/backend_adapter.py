@@ -6,9 +6,15 @@
     taxonomy 안에는 Backend 코드가 들어가지 않는다.
 
 코드 매핑 상태 (approved 와 provisional 을 분리한다)
-    approved   : Backend 가 승인 확정. ``backend_crosswalk`` 가 단독 소유한다.
+    approved Skill (2026-11-23 Backend 승인):
         - ``distribution`` → ``SKL-1-004``
-        - ``2.1``           → ``MIS-1-004``
+        - ``polynomial_addition`` → ``SKL-1-002`` (입력은 002/003 모두 허용)
+        - ``polynomial_multiplication`` → ``SKL-1-005``
+        - ``factoring_common`` → ``SKL-1-023``
+        - ``factoring_formula`` → ``SKL-1-025`` (입력은 025/026 모두 허용)
+        ※ N:1 공유 Skill 은 출력 시 대표 코드 1개만 내보낸다.
+    approved Misconception:
+        - ``2.1`` → ``MIS-1-004``
     provisional: 후보. **Backend 승인 아님.** 승인되면 ``backend_crosswalk`` 로 이관한다.
         A2(2026-11-10) 이후 **표가 비어 있다**. 관계자료 xlsx 에만 있고 공식
         Seed 에 없는 코드 3건을 제거했기 때문이다:
@@ -60,6 +66,7 @@ import re
 from app.integration.backend_crosswalk import (
     APPROVED_MISCONCEPTION_CODES,
     APPROVED_SKILL_CODES,
+    APPROVED_SKILL_CODE_TO_ID,
     UNMAPPED,
     is_approved_misconception_code,
     is_approved_skill_code,
@@ -203,13 +210,9 @@ def normalize_backend_id(value: str | int, field: str) -> str:
 # Skill code 역변환 (Backend code → AI① frozen skill_id)
 # ---------------------------------------------------------------------------
 
-#: 코드 → 내부 skill_id. approved 와 provisional 을 합친 역방향 인덱스.
-#: 정방향 표(skill_id → code)를 뒤집어야 한다 — 그대로 펼치면 코드가 키로 남는다.
+#: 코드 → 내부 skill_id. approved 역방향 표(N:1 허용)와 provisional 을 합친다.
 _SKILL_CODE_TO_ID: dict[str, str] = {
-    **{
-        code: skill_id
-        for skill_id, code in APPROVED_SKILL_CODES.items()
-    },
+    **APPROVED_SKILL_CODE_TO_ID,
     **{
         code: skill_id
         for skill_id, code in PROVISIONAL_SKILL_CODES.items()

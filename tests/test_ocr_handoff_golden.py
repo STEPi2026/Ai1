@@ -313,7 +313,7 @@ def test_concept_error_case_invariants():
     assert body["state"] == "needs_practice"
     assert body["misconception_id"] == "2.1"
     assert body["misconception_tag"] == "2.1"
-    assert body["official_skill_codes"] == ["SKL-1-004"]
+    assert body["official_skill_codes"] == ["SKL-1-004", "SKL-1-005"]
     assert body["official_misconception_codes"] == ["MIS-1-004"]
     assert body["provisional_misconception_codes"] == []
 
