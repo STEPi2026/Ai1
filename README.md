@@ -355,6 +355,14 @@ AI② 전달 패키지(OpenAPI·대표 예시 4종·판정 한계 사본·전달
 기본 출력은 `docs/AI2_전달_<YYYY-MM-DD>/` 이며, 배포 절차는
 `docs/AI1_배포_체크리스트.md` 를 따른다.
 
+배포 스모크는 상태 표만 출력한다 — 키는 환경변수로만 넘기고, 출력에는 host·상태
+코드·필드명만 나온다:
+
+```powershell
+$env:AI1_SMOKE_KEY = "<키>"
+.venv\Scripts\python scripts\smoke_deploy.py --base-url https://<host>
+```
+
 ### `GET /api/v1/students/{student_id}/skills`
 
 학생이 **관측된** Skill 의 현재 state/mastery 목록 (명세 웹 r26/r27 숙련도 차트).

@@ -43,16 +43,27 @@
       또는 **401** `E_AUTH_INVALID_KEY` (키는 설정됐고 헤더 없음)
 - [ ] `/docs`·`/redoc`·`/openapi.json` → **404** (운영에서 기본 비노출 확인)
 
-## 4. 스모크 테스트 (배포 직후, 실호출 최소)
+## 4. 스모크 테스트 (배포 직후 — 스크립트 1회)
 
-| 확인 | 요청 | 기대 |
+```powershell
+$env:AI1_SMOKE_KEY = "<배포된 서버의 내부 키>"
+.venv\Scripts\python scripts\smoke_deploy.py --base-url https://<host>
+```
+
+- 키는 **환경변수에서만** 읽는다(CLI 인자 금지). 없으면 검사 전에 exit 2.
+- 출력은 검사별 PASS/FAIL + 상태 코드/필드명만 — scheme·경로·쿼리·키는 출력하지 않는다.
+- 실패가 하나라도 있으면 exit 1 이며, 배포를 중단하고 롤백 검토로 간다.
+- `SMOKE-<UTC run>` 식별자를 쓰므로 실제 학생 데이터와 겹치지 않는다.
+
+| # | 검사 | 기대 |
 |---|---|---|
-| 분석 | `POST /api/v1/attempts/SMOKE-1/analyze` (`X-Internal-Api-Key`) | 200, `analysis_status` 있음, `final_answer_present`·`review_reasons` 필드 존재 |
-| Skill 목록 | `GET /api/v1/students/{student_id}/skills` | 200, `skills`·`count` 존재 (기록 없으면 `[]`/0) |
-| 이력 | `GET /api/v1/students/{student_id}/history` | 200, `items`·`total`·`page` 존재 |
-
-- [ ] 세 응답 모두 키 없이 **401** (인증 guard 동작)
-- [ ] 스모크 요청은 테스트 학생 ID를 쓰고 실제 학생 데이터를 쓰지 않는다
+| 1 | health (무키) | 200, `status` 존재 |
+| 2 | history (무키) | 401 `E_AUTH_INVALID_KEY` (키 미설정 서버는 503 `E_AUTH_NOT_CONFIGURED` 도 허용·표시) |
+| 3 | analyze (키) | 200, ANALYZED, correct=true, fap=true, review_reasons=[], 필수 필드 존재 |
+| 4 | skills (키) | 200, count≥1, `linear_equation` 포함, engine=rule |
+| 5 | history (키) | 200, total≥1, items 비어 있지 않음 |
+| 6 | skills (무키) | 401 |
+| 7 | docs (무키) | 404 (운영 기본 비노출) |
 
 ## 5. OCR (2단계 — 승인된 경우에만)
 
