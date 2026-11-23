@@ -7,9 +7,10 @@ AI① Learning Intelligence — final_answer_present 예시 (2026-11-18)
 계약
 ----
 - 필드: final_answer_present: bool | null (기본 null, 누락도 null로 취급)
+      review_reasons: string[] (정상이면 [], 응답 전용 additive)
 - 대상: POST /api/v1/attempts/{attempt_id}/analyze 응답에만 추가
         (legacy /analyze-solution 에는 없음)
-- analysis_status != ANALYZED 이면 항상 null
+- analysis_status != ANALYZED 이면 final_answer_present 는 항상 null
 - UNKNOWN(422) 응답에는 필드 자체가 없음
 - correct 와 독립:
     · 틀린 최종 답  → final_answer_present=true,  correct=false
@@ -17,6 +18,10 @@ AI① Learning Intelligence — final_answer_present 예시 (2026-11-18)
 - equation: 마지막부터 연속된 "변수 = 상수" 답 블록의 서로 다른 값 개수가
             문제의 해 개수 이상이면 true, 미만이면 false.
             값의 정오는 보지 않는다(그것은 correct 의 몫).
+- 해를 여러 줄로 쓴 답 블록이 문제의 해집합과 **값까지 일치**하고, 오류가
+  모두 답 블록 안에 있으면 → REVIEW_REQUIRED
+  (correct=null, final_answer_present=null, review_reasons=["solution_block_notation"],
+   Knowledge State 미갱신). 정답으로 자동 확정하지 않는다.
 - expression: target_form 이 있을 때만 판정하며, 요구 형태와 맞으면 true,
               다르면 false, target_form=null 이면 항상 null.
 - 판단 불가(다변수, 인식 실패, 리뷰 필요 등)는 false 가 아니라 null.
@@ -106,28 +111,36 @@ AI② gating: ANALYZED + correct=false + final_answer_present=true
           → 오답이지만 완료된 시도 (완료 집계 여부는 AI② 정책)
 
 
-참고. 해를 여러 줄로 쓴 답안
-----------------------------
+참고. 해를 여러 줄로 쓴 답안 (2026-11-23 갱신)
+---------------------------------------------
 요청 요지
   problem_latex : x^2=9
   solution_text : x^2=9 / x=3 / x=-3
 
-응답 발췌
+응답 발췌 (REVIEW_REQUIRED 로 보류 — 이전에는 ANALYZED 였음)
 {
-  "analysis_status": "ANALYZED",
-  "correct": false,
-  "error_step": 2,
-  "error_type": "calculation",
+  "analysis_status": "REVIEW_REQUIRED",
+  "correct": null,
+  "error_step": null,
+  "error_type": null,
   "steps_latex": ["x^2=9", "x=3", "x=-3"],
   "valid": [true, false, false],
-  "final_answer_present": true
+  "unrecognized": [],
+  "final_answer_present": null,
+  "review_reasons": ["solution_block_notation"],
+  "observations": [],
+  "states": {},
+  "mastery_by_skill": {}
 }
 
-- 최종 답은 두 해를 모두 제시했으므로 final_answer_present=true.
-- correct=false 는 AI①의 단계 동치 판정 특성 때문입니다.
-  (x=3 한 줄이 x^2=9 와 동치가 아니라고 보는 기존 규칙 — 이번 필드와 무관)
-- 따라서 correct=false + final_answer_present=true 조합이 항상 "오답"을
-  뜻하지는 않습니다. correct 는 "단계에서 오류가 검출되지 않음"의 의미입니다.
+- 최종 답은 두 해를 모두 제시했고 값 집합 {3, -3} 이 문제의 해집합과 일치한다.
+  그러나 단계 동치 판정은 x=3 한 줄을 x^2=9 와 동치로 보지 않으므로,
+  AI①은 정답으로 자동 확정하지 않고 **사람 확인(REVIEW_REQUIRED)으로 보류**한다.
+- correct 를 true 로 덮지 않는다. Knowledge State/관측도 갱신하지 않는다.
+- 값이 틀린 분기 답안(x=4 / x=-4)이나 블록 밖 오류가 있는 답안은 그대로
+  ANALYZED 로 분석된다(진짜 오답을 보류로 숨기지 않는다).
+- AI② 처리 제안: REVIEW_REQUIRED 는 오답 집계·숙련도 하향에서 제외하고,
+  앱에서 학생 확인(답안 재검토) 플로우로 보낸다.
 
 
 현재 null 로 가는 대표 입력

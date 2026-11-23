@@ -430,6 +430,8 @@ def test_response_field_set_is_stable():
         "provisional_skill_codes", "provisional_misconception_codes",
         # final_answer_present (응답 전용 additive — 최종 답 제시 여부)
         "final_answer_present",
+        # 판정 보류 사유 (응답 전용 additive — 정상이면 [])
+        "review_reasons",
     }
 
 

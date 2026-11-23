@@ -247,6 +247,15 @@ class AnalyzeAttemptResponse(BaseModel):
             "analysis_status가 ANALYZED가 아니면 항상 null."
         ),
     )
+    review_reasons: list[str] = Field(
+        default_factory=list,
+        description=(
+            "판정 보류 사유 코드 목록. 정상 분석이면 []. "
+            "예: 'solution_block_notation' — 해를 여러 줄로 쓴 답 블록이 "
+            "문제의 해집합과 값까지 일치해 단계 동치 판정만으로 오답 확정하지 "
+            "않고 REVIEW_REQUIRED 로 보류한 경우."
+        ),
+    )
     # --- 단계 목록 ---
     step_list: list[StepView] = Field(default_factory=list, description="명세서 step_list")
     # --- 다중 오류 / 관측 ---

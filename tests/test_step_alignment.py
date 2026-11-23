@@ -313,7 +313,8 @@ def test_api_response_contract_still_validates():
     parsed = AnalyzeSolutionResponse(**r.api_response)
     assert parsed.skill == "distribution"
     assert set(r.api_response) == set(AnalyzeSolutionResponse.model_fields) | {
-        "final_answer_present"
+        "final_answer_present",
+        "review_reasons",
     }
 
 

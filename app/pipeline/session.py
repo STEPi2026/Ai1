@@ -879,6 +879,7 @@ def _review_analysis(
         "error_subtype": None,
         "misconception_ids": [],
         "final_answer_present": None,
+        "review_reasons": list(verdict.review_reasons),
     }
     return AttemptAnalysis(
         attempt=attempt,
@@ -1118,6 +1119,7 @@ def analyze_attempt(
         "error_subtype": primary_error_subtype,
         "misconception_ids": [primary_misconception] if primary_misconception else [],
         "final_answer_present": final_answer_present,
+        "review_reasons": list(verdict.review_reasons),
     }
 
     return AttemptAnalysis(

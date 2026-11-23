@@ -203,7 +203,7 @@ Knowledge Observation 을 중복 반영하지 않는다. 다른 본문은 409 `E
 | `correct_solution` | object? | 정답 풀이 (미등록 문제 최초 등록용) |
 | `engine` | `rule` \| `bkt` | Knowledge State 엔진 |
 
-응답 필드 (`AnalyzeAttemptResponse`) — 기존 26개 + Backend 전달용 additive 5개 + 응답 전용 additive 1개:
+응답 필드 (`AnalyzeAttemptResponse`) — 기존 26개 + Backend 전달용 additive 5개 + 응답 전용 additive 2개:
 
 | 필드 | 설명 |
 |---|---|
@@ -211,6 +211,7 @@ Knowledge Observation 을 중복 반영하지 않는다. 다른 본문은 409 `E
 | `official_skill_codes` / `official_misconception_codes` | Backend **승인** 코드. 없으면 `[]` |
 | `provisional_skill_codes` / `provisional_misconception_codes` | **후보(미승인)** 코드. 없으면 `[]` |
 | `final_answer_present` | 마지막 답 블록이 최종 답을 모두 포함하는지. `true`=모두 포함, `false`=최종 답 아님 확정(중간식·미완성·일부 해), `null`=판단 불가. **`correct` 와 독립** — 틀린 최종 답이면 `true`+`correct=false`. `analysis_status != ANALYZED` 면 항상 `null`. 해를 여러 줄로 쓴 답 블록은 서로 다른 값의 개수로 센다 |
+| `review_reasons` | 판정 보류 사유 코드. 정상이면 `[]`. `solution_block_notation` — 해를 여러 줄로 쓴 답 블록이 문제의 해집합과 **값까지 일치**해 `REVIEW_REQUIRED`로 보류한 경우 (`correct=null`, Knowledge State 미갱신) |
 
 기존 `skill` · `skill_ids` · `misconception_id` · `misconception_ids` ·
 `misconception_tags` 는 taxonomy ID 그대로 유지한다(Backend 코드로 덮어쓰지 않는다).
@@ -397,6 +398,7 @@ subtype→부모 error_type 소속, 기존 ID 유지, `bkt_eligible` boolean, �
 - `unrecognized` 줄 구간은 부분 검증 — `correct=true`가 완전 검증을 뜻하지 않음 (ADR-03 설계상 트레이드오프)
 - **다변수 등식은 '오탐 회피' 우선**: 해 집합이 매개변수 형태면 비교를 보류해 `None`(검증 불가)이 되고 오류로 검출되지 않는다. 한쪽만 해가 없거나 양쪽이 구체적(concrete) 해 집합일 때만 `False`
 - `x^2=16 → x=4`는 동치 판정 기준으론 오류(해 누락) — 교육적 판단은 다를 수 있음
+- 해를 여러 줄로 쓴 답 블록(`x=3` / `x=-3`)은 단계 동치 판정만으로는 오답이 되므로, 값 집합이 문제의 해집합과 **값까지 일치**하고 오류가 모두 답 블록 안에 있으면 `REVIEW_REQUIRED`(`review_reasons=["solution_block_notation"]`, `correct=null`)로 보류한다. **정답으로 자동 확정하지 않는다** — 값이 다르면(진짜 오답) 그대로 `ANALYZED`
 - 이항 계열 오류는 원인에 따라 `3.1`(부호 미변경)과 `3.2`(항 누락/일부 양변 조작 비대칭)로 세분화된다. `3.2` detector 는 항 누락/일부 비대칭만 탐지하며 일방적 곱셈·나눗셈 전체를 보장하지 않는다
 - 분배의 "부호 오류"(`2(x-3) → 2x+3`)는 전용 subtype이 없어 `distribution_omit`으로 분류
 - 파서는 단일 문자 변수와 `sqrt`만 허용한다. `sin`·`cos`·`log`는 taxonomy상 future 영역이라 차단된다

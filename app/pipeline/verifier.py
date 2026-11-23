@@ -96,6 +96,29 @@ def _node_too_complex(node) -> bool:
 # 최종 답을 모두 담는가'만 형태·개수로 판정한다. 판단 불가는 None (ADR-03).
 # ---------------------------------------------------------------------------
 
+# 해를 여러 줄로 나눠 쓴 답 블록(x=3 / x=-3)이 실제 해집합과 일치하면,
+# 단계 동치 판정만으로는 오답이 되므로 판정을 보류한다 (AI② 제안).
+REVIEW_SOLUTION_BLOCK = "solution_block_notation"
+
+
+@dataclass(frozen=True)
+class AnswerBlock:
+    """마지막부터 연속된 '변수 = 상수' 줄 묶음(답 블록) 메타데이터.
+
+    - ``present``: 기존 final_answer_present (블록의 서로 다른 값 개수 >= 해 개수)
+    - ``start_index``: 답 블록 시작 인덱스(0-based). 블록이 없으면 None
+    - ``values``: 블록이 제시한 서로 다른 상수값 (sympy)
+    - ``solution_count``: 문제의 해 개수. 산출 실패면 None
+    - ``solution_values``: 문제의 해 값 집합 (값 비교용, 비노출 내부 메타데이터)
+    """
+
+    present: bool | None
+    start_index: int | None
+    values: set
+    solution_count: int | None
+    solution_values: frozenset = frozenset()
+
+
 def _solution_value(node, target):
     """단계가 'target = 상수' (또는 '상수 = target') 꼴이면 그 상수값을 돌려준다.
 
@@ -112,9 +135,9 @@ def _solution_value(node, target):
     return None
 
 
-def _final_answer_present_equation(
+def _answer_block_equation(
     problem, parsed: list, budget: _SolveBudget | None
-) -> bool | None:
+) -> AnswerBlock:
     """[equation] 마지막 답 블록이 해 진술인지 + 해 개수가 일치하는지.
 
     - 문제식 자유변수(target)가 정확히 1개일 때만 판정. 0개·2개 이상은 None.
@@ -130,47 +153,106 @@ def _final_answer_present_equation(
 
     ``budget`` 은 verify() 가 단계 비교에 이미 쓴 것과 같은 예산이다 — 밖에서
     새 solve() 를 호출하면 S2 예산 집계가 깨지므로 반드시 이 예산을 그대로 쓴다.
+    해 값 집합(``solution_values``)은 verify() 의 보류 판정이 추가 solve 없이
+    값 비교를 할 수 있도록 함께 돌려준다.
     """
+    unknown = AnswerBlock(present=None, start_index=None, values=set(),
+                          solution_count=None)
     if problem is None or problem[0] != "eq":
-        return None  # 대상 변수 불명 (문제식 미인식/등식 아님)
+        return unknown  # 대상 변수 불명 (문제식 미인식/등식 아님)
     syms = sorted(problem[1].free_symbols | problem[2].free_symbols, key=str)
     if len(syms) != 1:
-        return None  # 자유변수 0개 또는 2개 이상
+        return unknown  # 자유변수 0개 또는 2개 이상
     target = syms[0]
     if not parsed or parsed[-1] is None or parsed[-1][0] != "eq":
-        return None  # 마지막 단계가 unrecognized/비어 있음 — 단정하지 않는다
+        return unknown  # 마지막 단계가 unrecognized/비어 있음 — 단정하지 않는다
 
     if _solution_value(parsed[-1], target) is None:
-        return False  # 항등/모순·미정리(2x=6, x^2=9)·다른 변수 등 — 해 진술이 아니다
+        # 항등/모순·미정리(2x=6, x^2=9)·다른 변수 등 — 해 진술이 아니다
+        return AnswerBlock(present=False, start_index=None, values=set(),
+                           solution_count=None)
 
     # 이 지점에서 마지막 줄은 'target = 상수' 꼴의 해 진술이다.
     # 문제가 가진 해의 개수를 세어 제시 개수와 비교한다.
     if _node_too_complex(problem):
-        return None  # 개수 산출 자체가 무거운 입력 — 추측하지 않는다
+        return unknown  # 개수 산출 자체가 무거운 입력 — 추측하지 않는다
     if budget is not None and not budget.take(1):
-        return None  # S2 예산 소진 — False 로 단정하지 않는다
+        return unknown  # S2 예산 소진 — False 로 단정하지 않는다
     try:
         sols = solve(Eq(problem[1], problem[2]), target, dict=True)
     except Exception:
-        return None
+        return unknown
     if not isinstance(sols, list) or not sols:
-        return None  # 항등식/모순 문제·solve 실패 — 개수 산출 실패
+        return unknown  # 항등식/모순 문제·solve 실패 — 개수 산출 실패
+    solution_values: set = set()
     for sol in sols:
-        if not isinstance(sol, dict):
-            return None
-        for value in sol.values():
-            if value.free_symbols:
-                return None  # 매개변수 해 — 개수 산출 애매
+        if not isinstance(sol, dict) or target not in sol:
+            return unknown
+        value = sol[target]
+        if value.free_symbols:
+            return unknown  # 매개변수 해 — 개수 산출 애매
+        solution_values.add(value)
 
     # 마지막부터 연속된 'target = 상수' 묶음이 최종 답 블록이다.
     # 해를 여러 줄로 나눠 쓴 표기(x=3 / x=-3)를 부분 풀이로 오판하지 않는다.
     presented = set()
-    for node in reversed(parsed):
-        value = _solution_value(node, target)
+    start_index: int | None = None
+    for index in range(len(parsed) - 1, -1, -1):
+        value = _solution_value(parsed[index], target)
         if value is None:
             break  # 해 진술이 끊기면 거기까지가 답 블록이다
         presented.add(value)
-    return len(presented) >= len(sols)
+        start_index = index
+    return AnswerBlock(
+        present=len(presented) >= len(sols),
+        start_index=start_index,
+        values=presented,
+        solution_count=len(sols),
+        solution_values=frozenset(solution_values),
+    )
+
+
+def _values_match(presented: set, solutions: frozenset) -> bool:
+    """답 블록의 값 집합이 문제의 해집합과 '값까지' 일치하는지.
+
+    개수만 같고 값이 다르면(진짜 오답) 일치가 아니다. 비교는 simplify 차이 0.
+    """
+    if not presented or len(presented) != len(solutions):
+        return False
+    try:
+        return all(
+            any(simplify(value - solution) == 0 for solution in solutions)
+            for value in presented
+        )
+    except Exception:
+        return False  # 비교 실패 — 보류 사유를 붙이지 않는다(추측 금지)
+
+
+def _is_solution_block_review(
+    block: AnswerBlock, valid: list[bool | None], unrecognized: list[int]
+) -> bool:
+    """분기 답안을 REVIEW_REQUIRED 로 보류해야 하는지 (verify() 내부용).
+
+    모두 만족할 때만 True:
+    1) 문제가 단일 변수 등식 — 답 블록/해 개수 산출이 성립한 경우에 한함
+    2) 답 블록의 서로 다른 값 집합 == 문제의 해집합 (값까지 일치)
+    3) valid=False 인 인덱스가 **하나라도 있고**, 모두 답 블록 안에 있음
+       (블록 밖에 독립 오류가 있으면 정상 분석 경로를 유지한다)
+    4) unrecognized 없음
+
+    조건 3의 '하나라도'는 필수다 — 블록 줄들이 동치로 통과한 경우(2x=6 / x=3)
+    는 보류할 이유가 없다.
+    """
+    if block.start_index is None or block.solution_count is None:
+        return False
+    if unrecognized:
+        return False
+    if not _values_match(block.values, block.solution_values):
+        return False
+    false_indices = [index for index, verdict in enumerate(valid) if verdict is False]
+    if not false_indices:
+        return False
+    return all(index >= block.start_index for index in false_indices)
 
 
 def _final_answer_present_expression(parsed: list, target_form: str | None) -> bool | None:
@@ -448,7 +530,14 @@ def verify(problem_latex: str, steps: list[str]) -> Verdict:
     valid = [v for v, _ in comparisons]
     ref_step_no = [r for _, r in comparisons]
     first_error = next((i for i, v in enumerate(valid) if v is False), None)
-    final_answer = _final_answer_present_equation(problem, parsed, budget)
+
+    # 분기 답안(해를 여러 줄로 쓴 표기)이 값까지 정확하면, 단계 동치 판정만으로
+    # 오답 확정하지 않고 REVIEW_REQUIRED 로 보류한다. correct 를 true 로 덮지 않는다.
+    block = _answer_block_equation(problem, parsed, budget)
+    reasons: list[str] = []
+    if _is_solution_block_review(block, valid, unrecognized):
+        reasons.append(REVIEW_SOLUTION_BLOCK)
+
     return Verdict(
         steps=steps,
         parsed=parsed,
@@ -456,7 +545,8 @@ def verify(problem_latex: str, steps: list[str]) -> Verdict:
         first_error_index=first_error,
         unrecognized=unrecognized,
         ref_step_no=ref_step_no,
-        final_answer_present=final_answer,
+        review_reasons=reasons,
+        final_answer_present=block.present,
     )
 
 
@@ -575,6 +665,7 @@ __all__ = [
     "REVIEW_EXPRESSION_EQ_LINE",
     "REVIEW_EXPRESSION_PROBLEM_NOT_EXPR",
     "REVIEW_FUNCTION_NOTATION",
+    "REVIEW_SOLUTION_BLOCK",
     "Verdict",
     "equivalent",
     "verify",

@@ -285,7 +285,8 @@ def test_analyze_attempt_regression_api_contract():
     parsed = AnalyzeSolutionResponse(**r.api_response)
     assert parsed.skill == "distribution"
     assert set(r.api_response) == set(AnalyzeSolutionResponse.model_fields) | {
-        "final_answer_present"
+        "final_answer_present",
+        "review_reasons",
     }
 
 

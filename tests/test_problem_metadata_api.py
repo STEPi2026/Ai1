@@ -117,7 +117,7 @@ def test_request_without_metadata_still_works():
     r = post("A1")
     assert r.status_code == 200
     body = r.json()
-    assert len(body) == 32, "기존 POST 응답 필드 수가 바뀌면 안 된다 (additive만: + final_answer_present)"
+    assert len(body) == 33, "기존 POST 응답 필드 수가 바뀌면 안 된다 (additive만: + review_reasons)"
     assert body["correct"] is True
 
 
@@ -417,14 +417,14 @@ def test_repository_duplicate_problem_still_rejected():
 
 def test_attempt_detail_api_unchanged():
     posted = post("L1", "S1", WRONG, problem_concept_name="분배법칙").json()
-    assert len(posted) == 32  # 31 + final_answer_present (additive)
+    assert len(posted) == 33  # 32 + review_reasons (additive)
     listing = client.get("/api/v1/attempts/L1/analyses").json()
     assert listing["analysis_count"] == 1
     assert len(listing["analyses"][0]) == 16
     detail = client.get(
         f"/api/v1/attempts/L1/analyses/{posted['analysis_id'].replace('#', '%23')}"
     ).json()
-    assert len(detail) == 33  # 32 + final_answer_present
+    assert len(detail) == 34  # 33 + review_reasons
     assert detail["official_misconception_codes"] == ["MIS-1-004"]
     assert detail["raw_result"]["misconception_ids"] == ["2.1"]
 

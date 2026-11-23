@@ -297,7 +297,8 @@ def test_session_path_api_response_also_has_status():
     r = analyze_attempt(problem, a)
     assert r.api_response["analysis_status"] == "ANALYZED"
     assert set(r.api_response) == set(AnalyzeSolutionResponse.model_fields) | {
-        "final_answer_present"
+        "final_answer_present",
+        "review_reasons",
     }
     AnalyzeSolutionResponse(**r.api_response)
 

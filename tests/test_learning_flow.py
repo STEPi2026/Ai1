@@ -553,7 +553,8 @@ def test_api_response_field_set_matches_contract():
     a = StudentAttempt(attempt_id="A-f", student_id="S1", problem_id="P-DIST", solution_text="2(x-3)=6\nx=6")
     r = analyze_attempt(DIST_PROBLEM, a)
     assert set(r.api_response) == set(AnalyzeSolutionResponse.model_fields) | {
-        "final_answer_present"
+        "final_answer_present",
+        "review_reasons",
     }
 
 

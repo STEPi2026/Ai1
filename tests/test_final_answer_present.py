@@ -205,10 +205,12 @@ def test_expression_form_match_is_true():
 def test_field_is_serialized_in_response_schema():
     """10. POST 응답에 필드가 실제로 직렬화된다 (스키마 등록 확인)."""
     assert "final_answer_present" in AnalyzeAttemptResponse.model_fields
+    assert "review_reasons" in AnalyzeAttemptResponse.model_fields
     r = post("F11", "2x=6\nx=3")
     assert r.status_code == 200
     assert "final_answer_present" in r.json()
     assert r.json()["final_answer_present"] is True
+    assert r.json()["review_reasons"] == []
     # 멱등 재요청도 같은 값을 반환한다
     r2 = post("F11", "2x=6\nx=3")
     assert r2.json()["final_answer_present"] is True
@@ -260,11 +262,12 @@ def test_verifier_level_solved_form_variants():
 # 다중 줄 해 표기 — 마지막 '답 블록'의 서로 다른 값 개수로 판정
 # ===========================================================================
 
-def test_multiline_solution_block_is_true():
-    """해를 두 줄로 나눠 쓴 완전한 답안(x=3 / x=-3) → true.
+def test_multiline_solution_block_is_review_required():
+    """해를 두 줄로 나눠 쓴 정확한 답안(x=3 / x=-3) 은 REVIEW_REQUIRED 로 보류.
 
-    correct=false(단계 동치 판정의 기존 한계)와 독립적으로,
-    '최종 답을 모두 제시했는가'는 true 여야 한다.
+    단계 동치 판정은 x=3 한 줄을 x^2=9 와 동치로 보지 않으므로 correct=false 가
+    되지만, 값 집합이 문제의 해집합과 일치하고 오류가 모두 답 블록 안에 있으므로
+    자동 정답 처리하지 않고 보류한다. correct 를 true 로 덮지 않는다.
     """
     r = client.post(
         URL.format(attempt_id="F13"),
@@ -276,8 +279,140 @@ def test_multiline_solution_block_is_true():
     )
     assert r.status_code == 200
     b = r.json()
+    assert b["analysis_status"] == "REVIEW_REQUIRED"
+    assert b["correct"] is None
+    assert b["final_answer_present"] is None
+    assert b["review_reasons"] == ["solution_block_notation"]
+    # Knowledge State / 관측을 갱신하지 않는다
+    assert b["observations"] == []
+    assert b["states"] == {}
+    assert b["mastery_by_skill"] == {}
+
+
+def test_multiline_block_with_wrong_values_stays_analyzed():
+    """값이 틀린 분기 답안(x=4 / x=-4) 은 ANALYZED 유지 — 값 집합 불일치."""
+    r = client.post(
+        URL.format(attempt_id="F15"),
+        json=body(
+            "x^2=9\nx=4\nx=-4",
+            problem_latex="x^2=9",
+            problem_skills=["quadratic_equation"],
+        ),
+    )
+    assert r.status_code == 200
+    b = r.json()
+    assert b["analysis_status"] == "ANALYZED"
+    assert b["correct"] is False
+    assert b["final_answer_present"] is True
+    assert b["review_reasons"] == []
+
+
+def test_multiline_block_with_error_outside_block_stays_analyzed():
+    """블록 밖 오류(2x=6)가 있으면 정상 분석 경로 유지 — ANALYZED."""
+    r = client.post(
+        URL.format(attempt_id="F16"),
+        json=body(
+            "x^2=9\n2x=6\nx=3\nx=-3",
+            problem_latex="x^2=9",
+            problem_skills=["quadratic_equation"],
+        ),
+    )
+    assert r.status_code == 200
+    b = r.json()
+    assert b["analysis_status"] == "ANALYZED"
+    assert b["correct"] is False
+    assert b["final_answer_present"] is True
+    assert b["review_reasons"] == []
+
+
+def test_multiline_block_with_extra_value_stays_analyzed():
+    """블록 값 집합이 해집합과 다르면(x=1 추가) ANALYZED 유지."""
+    r = client.post(
+        URL.format(attempt_id="F17"),
+        json=body(
+            "x^2=9\nx=3\nx=-3\nx=1",
+            problem_latex="x^2=9",
+            problem_skills=["quadratic_equation"],
+        ),
+    )
+    assert r.status_code == 200
+    b = r.json()
     assert b["analysis_status"] == "ANALYZED"
     assert b["final_answer_present"] is True
+    assert b["review_reasons"] == []
+
+
+def test_multiline_partial_block_stays_false():
+    """일부 해만 있는 답안(x=3 하나)은 false 유지 — 보류 사유 없음."""
+    r = client.post(
+        URL.format(attempt_id="F18"),
+        json=body(
+            "x^2=9\nx=3",
+            problem_latex="x^2=9",
+            problem_skills=["quadratic_equation"],
+        ),
+    )
+    assert r.status_code == 200
+    b = r.json()
+    assert b["analysis_status"] == "ANALYZED"
+    assert b["final_answer_present"] is False
+    assert b["review_reasons"] == []
+
+
+def test_review_reasons_empty_on_normal_response():
+    """정상 응답의 review_reasons 는 항상 빈 배열이다."""
+    r = post("F19", "2x=6\nx=3")
+    assert r.status_code == 200
+    b = r.json()
+    assert b["analysis_status"] == "ANALYZED"
+    assert b["review_reasons"] == []
+    # legacy 경로에는 노출하지 않는다 (AnalyzeSolutionResponse 미변경)
+    legacy = client.post(
+        "/analyze-solution",
+        json={
+            "problem_latex": "2x=6",
+            "solution_text": "2x=6\nx=3",
+            "student_id": "S1",
+            "problem_skill": "linear_equation",
+        },
+    )
+    assert legacy.status_code == 200
+    assert "review_reasons" not in legacy.json()
+
+
+def test_solution_block_reason_is_idempotent():
+    """멱등 재요청도 같은 reason 을 반환한다."""
+    payload = body(
+        "x^2=9\nx=3\nx=-3",
+        problem_latex="x^2=9",
+        problem_skills=["quadratic_equation"],
+    )
+    r1 = client.post(URL.format(attempt_id="F20"), json=payload)
+    r2 = client.post(URL.format(attempt_id="F20"), json=payload)
+    assert r1.status_code == r2.status_code == 200
+    assert r1.json()["review_reasons"] == ["solution_block_notation"]
+    assert r2.json()["review_reasons"] == ["solution_block_notation"]
+    assert r2.json()["analysis_id"] == r1.json()["analysis_id"]
+
+
+def test_legacy_analysis_holds_solution_block():
+    """legacy /analyze-solution 도 같은 판정으로 correct=null 보류."""
+    r = client.post(
+        "/analyze-solution",
+        json={
+            "problem_latex": "x^2=9",
+            "solution_text": "x^2=9\nx=3\nx=-3",
+            "student_id": "S1",
+            "problem_skill": "quadratic_equation",
+        },
+    )
+    assert r.status_code == 200
+    b = r.json()
+    assert b["analysis_status"] == "REVIEW_REQUIRED"
+    assert b["correct"] is None
+    # legacy 응답 계약은 변경하지 않는다 (필드 미추가)
+    assert "final_answer_present" not in b
+    assert "review_reasons" not in b
 
 
 def test_multiline_partial_block_is_false():
@@ -302,3 +437,47 @@ def test_verifier_level_multiline_block_variants():
     assert v.final_answer_present is False  # 3, 3 → 서로 다른 값 1개
     v2 = verify("x^2=9", ["x^2=9", "x=3", "-3=x"])
     assert v2.final_answer_present is True  # 3, -3 → 2개
+
+
+# ===========================================================================
+# A6 사유 코드 노출 — AI②와 합의한 코드 문자열을 고정한다
+# ===========================================================================
+
+def test_a6_review_reason_codes_are_exposed():
+    """기존 A6 보류 사유 3건이 응답에 그대로 노출된다."""
+    fn = post("R1", "x=2\nf(2)=4")
+    assert fn.status_code == 200
+    assert fn.json()["analysis_status"] == "REVIEW_REQUIRED"
+    assert fn.json()["review_reasons"] == ["function_notation_in_solution"]
+
+    eq_line = client.post(
+        URL.format(attempt_id="R2"),
+        json=body(
+            "(x+1)(x+2)=x^2+3x+2",
+            problem_id="P-R2",
+            problem_latex="(x+1)(x+2)",
+            problem_skills=["distribution"],
+            problem_type="expression",
+        ),
+    )
+    assert eq_line.status_code == 200
+    assert eq_line.json()["analysis_status"] == "REVIEW_REQUIRED"
+    assert eq_line.json()["review_reasons"] == [
+        "equation_line_in_expression_mode"
+    ]
+
+    not_expr = client.post(
+        URL.format(attempt_id="R3"),
+        json=body(
+            "2x=6",
+            problem_id="P-R3",
+            problem_latex="2x=6",
+            problem_skills=["linear_equation"],
+            problem_type="expression",
+        ),
+    )
+    assert not_expr.status_code == 200
+    assert not_expr.json()["analysis_status"] == "REVIEW_REQUIRED"
+    assert not_expr.json()["review_reasons"] == [
+        "expression_problem_not_expression"
+    ]

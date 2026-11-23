@@ -245,7 +245,8 @@ def test_api_response_unchanged_by_gate():
     parsed = AnalyzeSolutionResponse(**r.api_response)
     assert parsed.correct is True
     assert set(r.api_response) == set(AnalyzeSolutionResponse.model_fields) | {
-        "final_answer_present"
+        "final_answer_present",
+        "review_reasons",
     }  # 응답 전용 additive (AnalyzeSolutionResponse 는 extra=ignore 라 통과)
 
 

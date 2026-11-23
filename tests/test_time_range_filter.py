@@ -561,7 +561,7 @@ def test_attempt_and_detail_apis_have_no_time_filter():
 def test_post_contracts_unchanged():
     # PHASE 9-7 additive: 기존 26 + Backend 코드 5 = 31 (상세는 +raw_result 로 32)
     posted = post("W1", M21).json()
-    assert len(posted) == 32  # 31 + final_answer_present (additive)
+    assert len(posted) == 33  # 32 + review_reasons (additive)
     assert posted["official_misconception_codes"] == ["MIS-1-004"]
     assert len(client.post(
         "/analyze-solution",
@@ -571,7 +571,7 @@ def test_post_contracts_unchanged():
         "/api/v1/attempts/W1/analyses/"
         + post("W1", M21).json()["analysis_id"].replace("#", "%23")
     ).json()
-    assert len(detail) == 33  # 32 + final_answer_present
+    assert len(detail) == 34  # 33 + review_reasons
     assert detail["official_misconception_codes"] == ["MIS-1-004"]
     assert detail["attempted_at"] == post("W1", M21).json()["attempted_at"]
 

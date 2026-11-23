@@ -415,6 +415,7 @@ def _to_attempt_response(analysis, analysis_id: str, analysis_count: int) -> Ana
         valid=api["valid"],
         unrecognized=api["unrecognized"],
         final_answer_present=api.get("final_answer_present"),
+        review_reasons=api.get("review_reasons", []),
         step_list=_build_step_list(analysis),
         errors=[e.model_dump() for e in analysis.errors],
         observations=[o.model_dump() for o in analysis.observations],
