@@ -6,13 +6,18 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import httpx
 from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.integration.google_vision import ALLOWED_HOSTS_ENV, GoogleVisionProvider
+from app.integration.google_vision import (
+    ALLOWED_HOSTS_ENV,
+    GoogleVisionProvider,
+    _fetch_https_image,
+)
 from app.integration.google_vision_budget import BudgetExceeded
 from app.integration.ocr import (
     OcrApiDisabledError,
@@ -78,8 +83,9 @@ class FakeVisionTypes:
             self.image_uri = image_uri
 
     class Image:
-        def __init__(self, *, source):
+        def __init__(self, *, source=None, content=None):
             self.source = source
+            self.content = content
 
     class ImageContext:
         def __init__(self, *, language_hints):
@@ -128,7 +134,7 @@ def _quota_env(**overrides):
 
 
 def _provider(client=None, *, language_hint="ko", reserve_slot=None,
-             allowed_hosts=None, record_call=None):
+             allowed_hosts=None, record_call=None, fetch_image=None):
     return GoogleVisionProvider(
         client or FakeVisionClient(),
         FakeVisionTypes,
@@ -137,6 +143,8 @@ def _provider(client=None, *, language_hint="ko", reserve_slot=None,
         reserve_slot=reserve_slot or (lambda *args, **kwargs: 1),
         # 테스트가 실제 원장/잠금 파일에 쓰지 않도록 결과 기록을 끈다.
         record_call=record_call,
+        # 테스트에서는 실제 네트워크로 이미지를 받지 않는다.
+        fetch_image=fetch_image or (lambda uri: b"fake-image-bytes"),
     )
 
 
@@ -164,7 +172,7 @@ def test_google_vision_returns_raw_korean_text_and_math_lines():
     assert result.page_index == 0
     assert result.lines[1].bbox.x == pytest.approx(20)
     assert reservations and reservations[0][2] == 40
-    assert client.calls[0]["image"].source.image_uri == IMAGE_URI
+    assert client.calls[0]["image"].content == b"fake-image-bytes"
     assert client.calls[0]["image_context"].language_hints == ["ko"]
     assert client.calls[0]["retry"] is None
 
@@ -556,3 +564,77 @@ def test_raw_text_response_is_not_sent_to_analysis_automatically():
         "raw_lines": [],
     }
     assert ocr_to_analysis_request(body) is None
+
+
+# ===========================================================================
+# 이미지 다운로드 경계 — Vision에 URL을 넘기지 않고 bytes로 전달한다
+# ===========================================================================
+
+def test_provider_downloads_image_and_passes_bytes():
+    seen: list[str] = []
+    client = FakeVisionClient()
+
+    def fetch(uri: str) -> bytes:
+        seen.append(uri)
+        return b"png-bytes"
+
+    provider = _provider(client, fetch_image=fetch)
+    provider.recognize(
+        OcrProviderRequest(attempt_id="G-FETCH-1", image_reference=IMAGE_URI)
+    )
+
+    assert seen == [IMAGE_URI]
+    assert client.calls[0]["image"].content == b"png-bytes"
+
+
+def test_image_fetch_failure_records_failed_without_vision_call():
+    recorded: list[tuple] = []
+    client = FakeVisionClient()
+
+    def fetch(uri: str) -> bytes:
+        raise OcrImageFetchError("fetch failed")
+
+    provider = _provider(
+        client,
+        fetch_image=fetch,
+        record_call=lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    with pytest.raises(OcrImageFetchError):
+        provider.recognize(
+            OcrProviderRequest(attempt_id="G-FETCH-2", image_reference=IMAGE_URI)
+        )
+
+    assert client.calls == []
+    assert recorded and recorded[0][0][1] == "failed"
+
+
+def test_fetch_https_image_returns_image_bytes():
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200, headers={"content-type": "image/png"}, content=b"png"
+        )
+    )
+    with httpx.Client(transport=transport) as client:
+        assert (
+            _fetch_https_image("https://example.com/x.png", timeout=8, client=client)
+            == b"png"
+        )
+
+
+@pytest.mark.parametrize(
+    "response,expected",
+    [
+        (httpx.Response(404), OcrImageFetchError),
+        (
+            httpx.Response(
+                200, headers={"content-type": "text/html"}, content=b"<html>"
+            ),
+            OcrUnsupportedImageError,
+        ),
+    ],
+)
+def test_fetch_https_image_rejects_non_image(response, expected):
+    transport = httpx.MockTransport(lambda request: response)
+    with httpx.Client(transport=transport) as client:
+        with pytest.raises(expected):
+            _fetch_https_image("https://example.com/x", timeout=8, client=client)

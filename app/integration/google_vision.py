@@ -11,6 +11,7 @@ loads its service-account JSON through ``GOOGLE_APPLICATION_CREDENTIALS``.
 from __future__ import annotations
 
 import hashlib
+import httpx
 import math
 import os
 import re
@@ -55,6 +56,58 @@ _MAX_TIMEOUT_SECONDS = 25.0
 # 개발 기간 주소 변동이 있으므로 호스트를 코드에 고정하지 않고 환경변수로
 # 허용한다. 값 자체는 운영자가 Backend 공지로 설정(AI1이 임의로 정하지 않음).
 ALLOWED_HOSTS_ENV = "AI1_OCR_ALLOWED_HOSTS"
+
+# 이미지 원본을 AI①이 직접 내려받아 Vision에 bytes로 전달한다.
+# Vision은 임의의 HTTPS URL을 대신 fetch하지 못하므로(코드 7) 이 경계가 필요하다.
+_MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
+
+def _fetch_https_image(
+    uri: str, *, timeout: float, client: httpx.Client | None = None
+) -> bytes:
+    """HTTPS 이미지 참조를 내려받아 bytes로 반환한다.
+
+    - 리다이렉트는 따라가지 않는다(호스트 정책 우회 방지).
+    - 200 + image/* + 10MB 이하만 허용한다.
+    - 오류 메시지에 서명 URL/쿼리를 포함하지 않는다.
+    """
+    owns_client = client is None
+    if client is None:
+        client = httpx.Client(timeout=timeout, follow_redirects=False)
+    try:
+        with client.stream("GET", uri) as response:
+            if response.status_code != 200:
+                raise OcrImageFetchError(
+                    "The image reference could not be downloaded "
+                    f"(HTTP {response.status_code})."
+                )
+            content_type = (response.headers.get("content-type") or "")
+            content_type = content_type.split(";")[0].strip().lower()
+            if not content_type.startswith("image/"):
+                raise OcrUnsupportedImageError(
+                    "The image reference is not an image content type."
+                )
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in response.iter_bytes():
+                total += len(chunk)
+                if total > _MAX_IMAGE_BYTES:
+                    raise OcrUnsupportedImageError(
+                        "The image is too large for OCR."
+                    )
+                chunks.append(chunk)
+        if total == 0:
+            raise OcrUnsupportedImageError("The image reference is empty.")
+        return b"".join(chunks)
+    except (OcrImageFetchError, OcrUnsupportedImageError):
+        raise
+    except httpx.TimeoutException:
+        raise OcrImageFetchError("The image reference download timed out.") from None
+    except httpx.HTTPError:
+        raise OcrImageFetchError("The image reference could not be downloaded.") from None
+    finally:
+        if owns_client:
+            client.close()
 
 
 def _field(value: Any, name: str, default=None):
@@ -264,7 +317,8 @@ class GoogleVisionProvider:
                  reserve_slot: Callable[..., int] = reserve_call_slot,
                  call_cap: int = CUMULATIVE_CALL_CAP,
                  monthly_policy: MonthlyQuotaPolicy | None = None,
-                 record_call: Callable[..., None] | None = record_call_outcome):
+                 record_call: Callable[..., None] | None = record_call_outcome,
+                 fetch_image: Callable[[str], bytes] | None = None):
         self.client = client
         self.vision = vision_module
         self.language_hint = language_hint
@@ -274,11 +328,16 @@ class GoogleVisionProvider:
         self.call_cap = call_cap
         self.monthly_policy = monthly_policy
         self.record_call = record_call
+        self.fetch_image = fetch_image or self._fetch_image
+
+    def _fetch_image(self, uri: str) -> bytes:
+        return _fetch_https_image(uri, timeout=self.timeout)
 
     @classmethod
     def from_environment(cls, *, env=None, client_factory=None, vision_module=None,
                          reserve_slot: Callable[..., int] = reserve_call_slot,
-                         call_cap: int = CUMULATIVE_CALL_CAP):
+                         call_cap: int = CUMULATIVE_CALL_CAP,
+                         fetch_image: Callable[[str], bytes] | None = None):
         env = os.environ if env is None else env
         credential_path = env.get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
         if not credential_path:
@@ -348,6 +407,7 @@ class GoogleVisionProvider:
             reserve_slot=reserve_slot,
             call_cap=call_cap,
             monthly_policy=monthly_policy,
+            fetch_image=fetch_image,
         )
 
     def recognize(self, request: OcrProviderRequest) -> OcrRawTextResult:
@@ -391,9 +451,8 @@ class GoogleVisionProvider:
             ) from None
 
         try:
-            image = self.vision.Image(
-                source=self.vision.ImageSource(image_uri=uri)
-            )
+            image_bytes = self.fetch_image(uri)
+            image = self.vision.Image(content=image_bytes)
             image_context = (
                 self.vision.ImageContext(language_hints=[self.language_hint])
                 if self.language_hint else None
@@ -407,6 +466,9 @@ class GoogleVisionProvider:
                 retry=None,
             )
             result = _to_raw_result(response, request)
+        except (OcrImageFetchError, OcrUnsupportedImageError) as exc:
+            self._record_outcome(call_id, "failed", exc)
+            raise
         except (OcrAuthenticationError, OcrBillingRequiredError, OcrApiDisabledError) as exc:
             self._record_outcome(call_id, "failed", exc)
             raise

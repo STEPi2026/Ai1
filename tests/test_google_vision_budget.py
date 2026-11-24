@@ -368,8 +368,9 @@ class _FakeVision:
             self.image_uri = image_uri
 
     class Image:
-        def __init__(self, *, source):
+        def __init__(self, *, source=None, content=None):
             self.source = source
+            self.content = content
 
 
 def _provider(client, *, reserve_slot, record_call=None):
@@ -382,6 +383,7 @@ def _provider(client, *, reserve_slot, record_call=None):
         reserve_slot=reserve_slot,
         monthly_policy=_policy(),
         record_call=record_call,
+        fetch_image=lambda uri: b"fake-image-bytes",
     )
 
 

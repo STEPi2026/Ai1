@@ -555,13 +555,13 @@ subtype→부모 error_type 소속, 기존 ID 유지, `bkt_eligible` boolean, �
 
 | 항목 | 결과 |
 |---|---|
-| pytest | **1935 passed**, 1 warning (Starlette httpx deprecation) |
+| pytest | **1940 passed**, 1 warning (Starlette httpx deprecation) |
 | lint | `pyflakes app tests` → 0건 |
 | taxonomy validation | `validate_all()` → `[]` |
 | golden regression | 100 case · `correct`/`error_step`/`error_type`/`skill`/`state` **각 1.000** · 실패 0 · false mismatch 0 |
 | API smoke | PHASE 1~5 누적 15개 + PHASE 8/9 누적 시나리오 통과 |
 
-기존 테스트는 삭제하지 않았고(271 → 1935, 2026-11-23 기준, 전부 증가), golden expected 값도 변경하지 않았다.
+기존 테스트는 삭제하지 않았고(271 → 1940, 2026-11-23 기준, 전부 증가), golden expected 값도 변경하지 않았다.
 
 ## 다음 단계 (기획 로드맵)
 
