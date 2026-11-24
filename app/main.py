@@ -727,8 +727,17 @@ def _to_ocr_response(
             raw_lines=[line.model_dump() for line in result.lines],
             page_index=page_index,
             warnings=list(result.warnings),
+            capture_mode=req.capture_mode,
+            layout_detected="unknown",
+            layout_mismatch=None,
         )
 
+    layout_detected = result.layout_detected
+    if layout_detected is None:
+        layout_detected = "problem_and_solution" if result.steps else "problem_only"
+    layout_mismatch = None
+    if req.capture_mode is not None and layout_detected != "unknown":
+        layout_mismatch = req.capture_mode != layout_detected
     return OcrResponse(
         ocr_result_id=derive_ocr_result_id(attempt_id, result, page_index),
         attempt_id=attempt_id,
@@ -743,6 +752,9 @@ def _to_ocr_response(
         raw_lines=[],
         page_index=page_index,
         warnings=list(result.warnings),
+        capture_mode=req.capture_mode,
+        layout_detected=layout_detected,
+        layout_mismatch=layout_mismatch,
     )
 
 
@@ -781,6 +793,7 @@ def ocr_attempt_endpoint(attempt_id: str, req: OcrAnalyzeRequest) -> OcrResponse
         attempt_id=normalized_attempt_id,
         image_reference=req.image_reference,
         page_index=req.page_index,
+        capture_mode=req.capture_mode,
     )
     try:
         result = provider.recognize(provider_request)

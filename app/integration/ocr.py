@@ -34,7 +34,15 @@ from abc import ABC, abstractmethod
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas import OcrProblem, OcrRawTextLine, OcrRegion, OcrStatus, OcrStep
+from app.schemas import (
+    OcrCaptureMode,
+    OcrLayoutDetected,
+    OcrProblem,
+    OcrRawTextLine,
+    OcrRegion,
+    OcrStatus,
+    OcrStep,
+)
 
 __all__ = [
     "OcrProvider",
@@ -128,6 +136,9 @@ class OcrProviderRequest(BaseModel):
     attempt_id: str = Field(..., description="Backend 가 정한 제출 식별자")
     image_reference: str = Field(..., min_length=1, description="Backend 가 보관한 이미지 참조")
     page_index: int | None = Field(None, ge=0, description="다중 페이지 중 몇 번째 페이지인지")
+    capture_mode: OcrCaptureMode | None = Field(
+        None, description="요청 촬영 범위. provider가 레이아웃 판단에 참고할 수 있다"
+    )
 
 
 class OcrResult(BaseModel):
@@ -145,6 +156,8 @@ class OcrResult(BaseModel):
     ocr_result_id: str | None = Field(None, description="없으면 경계가 attempt_id 로 파생한다")
     page_index: int | None = None
     warnings: list[str] = Field(default_factory=list)
+    #: provider가 실제 검출한 레이아웃. 없으면 경계가 problem/steps로 보수적으로 파생한다.
+    layout_detected: OcrLayoutDetected | None = None
 
 
 class OcrRawTextResult(BaseModel):

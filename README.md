@@ -230,6 +230,11 @@ Knowledge Observation 을 중복 반영하지 않는다. 다른 본문은 409 `E
   Vision은 문제/손풀이 경계를 제공하지 않으므로 `problem=null`, `regions=[]`,
   `solution_steps=[]`이며 의미를 추측하지 않는다. 텍스트가 있으면 `PARTIAL`, 없으면
   `UNREADABLE`로 표시한다. Backend/학생이 raw text를 확인·보정한 뒤에만 분석한다.
+- **레이아웃 계약(additive)**: 요청 `capture_mode`(`problem_only`|`problem_and_solution`)를
+  응답에 echo하고, `layout_detected`(`problem_only`|`problem_and_solution`|`mixed`|`unknown`)와
+  `layout_mismatch`(true|false|null)를 함께 반환한다. raw_text는
+  `layout_detected="unknown"`, `layout_mismatch=null`이다. `OcrRegion.region_id`로
+  영역과 `solution_steps[].region_id`를 연결한다.
 - OCR 입력의 `image_reference`는 Vision 호출에 전달하지만, 응답에는 이미지 참조를
   어떤 형태로도 되돌려 보내지 않는다 — 원본 URL/서명뿐 아니라 hash fingerprint
   필드도 두지 않는다. 참조는 provider 호출 입력으로만 쓴다.
@@ -555,13 +560,13 @@ subtype→부모 error_type 소속, 기존 ID 유지, `bkt_eligible` boolean, �
 
 | 항목 | 결과 |
 |---|---|
-| pytest | **1940 passed**, 1 warning (Starlette httpx deprecation) |
+| pytest | **1946 passed**, 1 warning (Starlette httpx deprecation) |
 | lint | `pyflakes app tests` → 0건 |
 | taxonomy validation | `validate_all()` → `[]` |
 | golden regression | 100 case · `correct`/`error_step`/`error_type`/`skill`/`state` **각 1.000** · 실패 0 · false mismatch 0 |
 | API smoke | PHASE 1~5 누적 15개 + PHASE 8/9 누적 시나리오 통과 |
 
-기존 테스트는 삭제하지 않았고(271 → 1940, 2026-11-23 기준, 전부 증가), golden expected 값도 변경하지 않았다.
+기존 테스트는 삭제하지 않았고(271 → 1946, 2026-11-23 기준, 전부 증가), golden expected 값도 변경하지 않았다.
 
 ## 다음 단계 (기획 로드맵)
 

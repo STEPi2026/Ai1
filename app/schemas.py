@@ -618,6 +618,12 @@ OcrStatus = Literal["COMPLETE", "PARTIAL", "UNREADABLE"]
 #: region 종류 — 인쇄(문제·조건) / 손글씨(풀이).
 OcrRegionKind = Literal["printed", "handwritten"]
 
+#: 요청이 기대하는 촬영 범위. 응답에는 요청 값을 그대로 echo 한다.
+OcrCaptureMode = Literal["problem_only", "problem_and_solution"]
+
+#: provider 가 실제로 검출한 레이아웃. mixed=문제/풀이 경계가 섞임, unknown=감지 불가.
+OcrLayoutDetected = Literal["problem_only", "problem_and_solution", "mixed", "unknown"]
+
 #: 읽을 수 없는 항목을 표시하는 표식. AI¹ 텍스트 파이프라인에서도 같은 표식을 쓴다.
 UNREADABLE_MARKER = "???"
 
@@ -716,6 +722,9 @@ class OcrRegion(_OcrReadable):
 
     kind: OcrRegionKind = Field(..., description="printed | handwritten")
     bbox: OcrBBox = Field(..., description="영역 좌표")
+    region_id: str | None = Field(
+        None, description="영역 식별자. 같은 OCR 결과 안에서 단계(region_id)와 연결한다"
+    )
 
 
 class OcrStep(_OcrContentRequired):
@@ -743,6 +752,9 @@ class OcrAnalyzeRequest(BaseModel):
 
     image_reference: str = Field(..., min_length=1, description="Backend 가 보관한 이미지 참조")
     page_index: int | None = Field(None, ge=0, description="다중 페이지 중 몇 번째 페이지인지")
+    capture_mode: OcrCaptureMode | None = Field(
+        None, description="요청 촬영 범위(problem_only|problem_and_solution). 응답에 echo"
+    )
 
     @field_validator("image_reference")
     @classmethod
@@ -782,6 +794,20 @@ class OcrResponse(BaseModel):
     )
     page_index: int | None = None
     warnings: list[str] = Field(default_factory=list)
+    # --- 레이아웃 계약 (AI② 라우팅용, additive) ---
+    capture_mode: OcrCaptureMode | None = Field(
+        None, description="요청 capture_mode echo. 없으면 null"
+    )
+    layout_detected: OcrLayoutDetected | None = Field(
+        None, description="provider가 실제 검출한 레이아웃. raw_text는 unknown"
+    )
+    layout_mismatch: bool | None = Field(
+        None,
+        description=(
+            "요청 capture_mode와 layout_detected가 명확히 다르면 true, 같으면 false, "
+            "감지 불가면 null"
+        ),
+    )
 
     @model_validator(mode="after")
     def _steps_are_top_to_bottom(self):
