@@ -235,6 +235,9 @@ Knowledge Observation 을 중복 반영하지 않는다. 다른 본문은 409 `E
   `layout_mismatch`(true|false|null)를 함께 반환한다. raw_text는
   `layout_detected="unknown"`, `layout_mismatch=null`이다. `OcrRegion.region_id`로
   영역과 `solution_steps[].region_id`를 연결한다.
+- **structured OCR provider: deferred (2026-11-24).** raw_text를 유지하고 사진 풀이는
+  힌트용으로만 사용한다. 정답 판정·숙련도에는 반영하지 않는다. 추가 API·의존성·유료
+  연동은 하지 않으며, 실사진/정답 라벨 확보 후 도입 여부를 재검토한다.
 - OCR 입력의 `image_reference`는 Vision 호출에 전달하지만, 응답에는 이미지 참조를
   어떤 형태로도 되돌려 보내지 않는다 — 원본 URL/서명뿐 아니라 hash fingerprint
   필드도 두지 않는다. 참조는 provider 호출 입력으로만 쓴다.

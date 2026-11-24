@@ -92,7 +92,8 @@
 | 파서 범위 | 단일 문자 변수·`sqrt(...)`만. `sin`/`cos`/`log`, `\sqrt{}` 미지원 |
 | `3.2` 탐지 범위 | 항 누락·일부 비대칭 연산만. 일방 곱셈·나눗셈 전체 아님 |
 | 계산 오류의 오개념 | 설계상 MIS 코드 없음(ADR-02) |
-| OCR raw_text | 문제/풀이 분리 없음, 구조화 OCR 미구현 |
+| OCR raw_text | 문제/풀이 분리 없음. structured provider는 deferred |
+| structured OCR provider | **deferred (2026-11-24)** — raw_text 유지, 사진은 힌트용, 채점·숙련도 미반영. 실사진/라벨 확보 후 재검토 |
 | 저장 | in-memory. 재시작 시 이력 소실 |
 | BKT | 파라미터 미피팅 |
 

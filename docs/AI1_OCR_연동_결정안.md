@@ -8,6 +8,34 @@
 
 ---
 
+## 0. 현재 결정 (2026-11-24): structured OCR provider — DEFERRED
+
+1. 기존 Google Vision raw_text OCR 구조를 유지한다.
+2. 사진 풀이는 현재처럼 힌트 제공 용도로만 사용한다.
+3. 사진 OCR 결과를 정답 판정·숙련도 업데이트에 반영하지 않는다.
+4. `capture_mode` / `layout_detected` / `layout_mismatch` / `region_id` 계약 필드는 유지하되,
+   실제 추출하지 못한 값은 `unknown`/`null`로 처리한다.
+5. structured OCR 관련 추가 API·의존성·유료 서비스 연동은 진행하지 않는다.
+6. 실제 학생 풀이 이미지와 정답 라벨을 확보해 OCR 정확도를 측정한 뒤 도입 여부를 재검토한다.
+
+현재 상태:
+- `representation`: `raw_text`
+- `layout_detected`: `unknown`
+- `layout_mismatch`: `null`
+- structured 응답: 미제공
+- 실사진 OCR 정확도: 미측정
+
+재검토 조건:
+- 실제 촬영 샘플 20장+와 사람 라벨 확보
+- 한글 인쇄/손글씨 수식 정확도·기호 혼동률 측정
+- 예산·개인정보(데이터 보존/opt-out) 검토
+- AI②의 structured 요구 확정
+
+> 이 결정은 2026-10-22 Mathpix 권장안을 **보류**로 대체한다.
+> 기존 비교·분석은 이력으로 보존한다.
+
+---
+
 ## 1. 요구 계약 — provider가 만족해야 하는 것
 
 `app/schemas.py` 의 `OcrResult` / `OcrResponse` 가 요구한다. 후보를 비교할 기준은
@@ -71,7 +99,9 @@
 
 ---
 
-## 3. 권장안 — **Mathpix OCR API (v3/text)**
+## 3. (이력) Mathpix 권장 검토 — 2026-10-22
+
+> 2026-11-24 현재 결정은 §0의 **deferred**이며, 이 절은 과거 검토 기록이다.
 
 ### 왜 이쪽인가
 
