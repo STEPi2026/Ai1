@@ -171,7 +171,7 @@ def test_google_vision_returns_raw_korean_text_and_math_lines():
     assert result.confidence == pytest.approx(0.89)
     assert result.page_index == 0
     assert result.lines[1].bbox.x == pytest.approx(20)
-    assert reservations and reservations[0][2] == 40
+    assert reservations and reservations[0][2] == 200
     assert client.calls[0]["image"].content == b"fake-image-bytes"
     assert client.calls[0]["image_context"].language_hints == ["ko"]
     assert client.calls[0]["retry"] is None

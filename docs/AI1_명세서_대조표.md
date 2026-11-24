@@ -1370,7 +1370,7 @@ Mathpix key 와 예산 승인이 준비된 뒤 E01~E16 평가 이미지를 준�
 | Signed URL 보호 | 요청 URL은 provider에만 전달한다. 응답에 이미지 참조 필드는 두지 않는다 — URL/서명/쿼리뿐 아니라 fingerprint도 되돌려 보내지 않는다. 오류 메시지에서도 URL/쿼리를 redaction한다 |
 | URL 입력 검증 | **HTTPS 서명 URL만** 허용(`gs://` 포함 타 스킴 거부, 협의서 §3.3 #10). 허용 호스트는 `AI1_OCR_ALLOWED_HOSTS`(쉼표 구분, 소문자 정규화, **스킴/경로/포트 없는 bare hostname만**) — 미설정이면 HTTPS만 검사, 설정 시 목록 내 host만. 스킴·경로·포트가 붙은 항목은 hostname exact match와 어긋나므로 provider 기동 시 503 `E_OCR_NOT_CONFIGURED`로 fail-closed한다(파싱 규칙은 `app/integration/host_policy.py` 단일 소스, preflight와 공유). 비HTTPS/미허용 host는 budget 예약·Vision 호출 **이전에** 422 `E_OCR_UNSUPPORTED_IMAGE` |
 | 재시도·timeout | AI¹ 은 자동 재시도하지 않는다 — 요청당 provider 호출 1회(fake 테스트 고정), SDK retry `None`, 실패 시에도 1회다. 재시도는 Backend의 소유다 (협의서 §4.6.1: 어떤 오류도 재시도 없음) |
-| 호출 가드 | 앱 provider와 eval probe가 `eval/_local/google_vision/call_budget.jsonl` 및 같은 lock을 공유한다. 누적 40회는 프로젝트 로컬 제한일 뿐 billing account 전체 quota가 아니다 |
+| 호출 가드 | 앱 provider와 eval probe가 `eval/_local/google_vision/call_budget.jsonl` 및 같은 lock을 공유한다. 누적 200회는 프로젝트 로컬 제한일 뿐 billing account 전체 quota가 아니다 |
 | 오류 | 협의서 §4.6.3 채택: `E_OCR_API_DISABLED`·`E_OCR_AUTH_FAILED`·`E_OCR_BILLING_REQUIRED`·`E_OCR_NOT_CONFIGURED`는 503, `E_OCR_USAGE_LIMIT_REACHED`(quota/local cap)는 **429**, `E_OCR_IMAGE_FETCH_FAILED`(링크 다운로드 실패)·`E_OCR_UNSUPPORTED_IMAGE`(형식·비-HTTPS)는 **422**, 그 외 provider 실패는 502 `E_OCR_PROVIDER_ERROR` |
 | 비용 상태 | 1,000 units/month/feature/billing-account 무료 범위와 실제 잔량은 별개다. billing/API 설정 및 인증된 OCR 호출은 없었다. 초기 SDK 테스트에서 fake URL+AnonymousCredentials 요청 2회가 endpoint에 도달했으나 403으로 거절됐고 OCR 처리 성공은 없었다. quota 확인·사용자 승인 전 실제 호출 금지 |
 | 평가 상태 | 현재 테스트는 fake Vision client/response와 network-free SDK message/signature 검사만 사용한다. 한글·수식의 실제 인식 품질은 아직 측정하지 않았다 |

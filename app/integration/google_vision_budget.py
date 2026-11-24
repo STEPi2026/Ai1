@@ -7,7 +7,7 @@
 
 두 개의 상한을 **동시에** 적용한다.
 
-- ``CUMULATIVE_CALL_CAP`` (40) — 프로젝트 전체 누적 상한. 기존 동작 유지.
+- ``CUMULATIVE_CALL_CAP`` (200) — 프로젝트 전체 누적 상한. 기존 40에서 상향.
 - 월별 내부 상한 — 운영자가 확인한 월 무료 제공량보다 **낮게** 설정한 값.
   매월 1일(UTC) 기준으로 구분하며 이전 달 기록은 지우지 않는다.
 
@@ -30,7 +30,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 GOOGLE_DIR = PROJECT_ROOT / "eval" / "_local" / "google_vision"
 BUDGET_LEDGER_PATH = GOOGLE_DIR / "call_budget.jsonl"
 LOCK_PATH = GOOGLE_DIR / "call_budget.lock"
-CUMULATIVE_CALL_CAP = 40
+CUMULATIVE_CALL_CAP = 200
 LOCK_TIMEOUT = 60.0
 LOCK_STALE_AFTER = 300.0
 
