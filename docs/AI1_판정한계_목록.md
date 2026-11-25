@@ -104,6 +104,10 @@
 3. ANALYZED + 비어 있지 않은 배열은 계약 위반으로 보고 보류한다.
 4. 받은 코드는 `ai1_review_reasons`로 기록하고 학생 화면에는 노출하지 않는다.
 5. 필드 누락은 `[]`로 처리한다.
+6. `observations[]`는 `error_id`로 `errors[]`와 연결한다. 같은 Skill의 다중 오류는
+   대표 1건만 붙으므로 전체는 `errors[]`를 기준으로 본다. 빈 배열을 대표 Skill로 대체하지 않는다.
+7. `correct`/`final_answer_present` 조합으로 부분 풀이를 구분하고,
+   `confidence`는 규칙 기반 참고값으로만 쓴다. `REVIEW_REQUIRED`/`UNKNOWN`은 오답이 아니다.
 
 ## 6. 변경 이력
 
@@ -111,6 +115,7 @@
 |---|---|
 | 2026-11-23 | `review_reasons` 필드 추가, `solution_block_notation` 첫 코드 |
 | 2026-11-23 | 기존 A6 사유 3건(`function_notation_in_solution`, `equation_line_in_expression_mode`, `expression_problem_not_expression`) 응답 노출 |
+| 2026-11-25 | AI② 튜터 확장·Backend 협의 결과 반영(§5 6~7항). 상세 `docs/AI1_연동협의_2026-11-25.md` |
 
 새 코드를 추가할 때는 이 표와 예시를 함께 갱신하고, AI②에 코드/뜻/발생 조건을
 전달한다.
